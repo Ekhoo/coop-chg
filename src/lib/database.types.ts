@@ -20,7 +20,9 @@ export interface Product {
   id: string
   category_id: string | null
   name: string
-  price_cents: number
+  cost_price_cents: number
+  sale_price_cents: number
+  commission_cents: number
   stock: number
   image_path: string | null
   archived: boolean
@@ -40,11 +42,23 @@ export interface TransactionItem {
   transaction_id: string
   product_id: string | null
   product_name: string
-  unit_price_cents: number
+  unit_cost_cents: number
+  unit_sale_cents: number
+  unit_commission_cents: number
   qty: number
 }
 
 export interface CheckoutItem {
   product_id: string
   qty: number
+}
+
+export function clientPriceCents(p: Pick<Product, 'sale_price_cents' | 'commission_cents'>): number {
+  return p.sale_price_cents + p.commission_cents
+}
+
+export function lineClientCents(
+  it: Pick<TransactionItem, 'unit_sale_cents' | 'unit_commission_cents' | 'qty'>
+): number {
+  return (it.unit_sale_cents + it.unit_commission_cents) * it.qty
 }

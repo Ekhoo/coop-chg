@@ -5,7 +5,8 @@ import type { Product } from '@/lib/database.types'
 export interface CartLine {
   product_id: string
   name: string
-  unit_price_cents: number
+  unit_sale_cents: number
+  unit_commission_cents: number
   qty: number
   stock: number
 }
@@ -40,7 +41,8 @@ export const useCart = create<CartStore>()(
               {
                 product_id: product.id,
                 name: product.name,
-                unit_price_cents: product.price_cents,
+                unit_sale_cents: product.sale_price_cents,
+                unit_commission_cents: product.commission_cents,
                 qty: 1,
                 stock: product.stock,
               },
@@ -61,10 +63,14 @@ export const useCart = create<CartStore>()(
         set((state) => ({ lines: state.lines.filter((l) => l.product_id !== product_id) })),
       clear: () => set({ lines: [] }),
     }),
-    { name: 'coop-nico-cart' }
+    { name: 'coop-nico-cart', version: 2 }
   )
 )
 
+export function lineUnitCents(line: CartLine): number {
+  return line.unit_sale_cents + line.unit_commission_cents
+}
+
 export function cartTotal(lines: CartLine[]): number {
-  return lines.reduce((sum, l) => sum + l.unit_price_cents * l.qty, 0)
+  return lines.reduce((sum, l) => sum + lineUnitCents(l) * l.qty, 0)
 }

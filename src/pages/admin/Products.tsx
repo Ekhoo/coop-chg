@@ -8,7 +8,7 @@ import { useProducts, useCategories } from '@/hooks/useProducts'
 import { useToast } from '@/components/Toast'
 import { Modal } from '@/components/Modal'
 import { formatPrice, parsePriceToCents } from '@/lib/format'
-import type { Product } from '@/lib/database.types'
+import { clientPriceCents, type Product } from '@/lib/database.types'
 
 export function ProductsPage() {
   const { data: products = [], isLoading } = useProducts({ includeArchived: true })
@@ -72,7 +72,10 @@ export function ProductsPage() {
                 <th className="text-left px-3 py-2 w-14"></th>
                 <th className="text-left px-3 py-2">Nom</th>
                 <th className="text-left px-3 py-2">Catégorie</th>
-                <th className="text-right px-3 py-2 w-24">Prix</th>
+                <th className="text-right px-3 py-2 w-24">Achat</th>
+                <th className="text-right px-3 py-2 w-24">Vente</th>
+                <th className="text-right px-3 py-2 w-24">Comm.</th>
+                <th className="text-right px-3 py-2 w-24">Client</th>
                 <th className="text-center px-3 py-2 w-44">Stock</th>
                 <th className="px-3 py-2 w-20"></th>
               </tr>
@@ -142,7 +145,16 @@ function ProductRow({
       </td>
       <td className="px-3 py-2 font-medium">{product.name}</td>
       <td className="px-3 py-2 text-slate-600">{categoryName ?? '—'}</td>
-      <td className="px-3 py-2 text-right font-medium">{formatPrice(product.price_cents)}</td>
+      <td className="px-3 py-2 text-right text-slate-500">
+        {formatPrice(product.cost_price_cents)}
+      </td>
+      <td className="px-3 py-2 text-right">{formatPrice(product.sale_price_cents)}</td>
+      <td className="px-3 py-2 text-right text-purple-700">
+        {formatPrice(product.commission_cents)}
+      </td>
+      <td className="px-3 py-2 text-right font-bold text-brand-700">
+        {formatPrice(clientPriceCents(product))}
+      </td>
       <td className="px-3 py-2">
         <div className="flex items-center justify-center gap-1">
           <button
@@ -192,13 +204,22 @@ function ProductFormModal({
   const toast = useToast()
   const [name, setName] = useState(product?.name ?? '')
   const [categoryId, setCategoryId] = useState<string>(product?.category_id ?? '')
-  const [priceText, setPriceText] = useState(
-    product ? (product.price_cents / 100).toString().replace('.', ',') : ''
+  const centsToText = (c: number) => (c / 100).toString().replace('.', ',')
+  const [costText, setCostText] = useState(product ? centsToText(product.cost_price_cents) : '')
+  const [saleText, setSaleText] = useState(product ? centsToText(product.sale_price_cents) : '')
+  const [commissionText, setCommissionText] = useState(
+    product ? centsToText(product.commission_cents) : '0'
   )
   const [stock, setStock] = useState(String(product?.stock ?? 0))
   const [imagePath, setImagePath] = useState<string | null>(product?.image_path ?? null)
   const [archived, setArchived] = useState(product?.archived ?? false)
   const [uploading, setUploading] = useState(false)
+
+  const saleCentsPreview = parsePriceToCents(saleText) ?? 0
+  const commissionCentsPreview = parsePriceToCents(commissionText) ?? 0
+  const costCentsPreview = parsePriceToCents(costText) ?? 0
+  const clientCentsPreview = saleCentsPreview + commissionCentsPreview
+  const marginCentsPreview = saleCentsPreview - costCentsPreview
 
   async function handleUpload(file: File) {
     setUploading(true)
@@ -219,14 +240,20 @@ function ProductFormModal({
 
   const save = useMutation({
     mutationFn: async () => {
-      const priceCents = parsePriceToCents(priceText)
-      if (priceCents === null) throw new Error('Prix invalide')
+      const cost = parsePriceToCents(costText)
+      const sale = parsePriceToCents(saleText)
+      const commission = parsePriceToCents(commissionText)
+      if (cost === null) throw new Error("Prix d'achat invalide")
+      if (sale === null) throw new Error('Prix de vente invalide')
+      if (commission === null) throw new Error('Commission invalide')
       const stockNum = Number(stock)
       if (!Number.isInteger(stockNum) || stockNum < 0) throw new Error('Stock invalide')
       const payload = {
         name: name.trim(),
         category_id: categoryId || null,
-        price_cents: priceCents,
+        cost_price_cents: cost,
+        sale_price_cents: sale,
+        commission_cents: commission,
         stock: stockNum,
         image_path: imagePath,
         archived,
@@ -331,29 +358,72 @@ function ProductFormModal({
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div>
-            <label className="label">Prix (€)</label>
+            <label className="label">Prix d'achat (€)</label>
             <input
               className="input"
               inputMode="decimal"
-              value={priceText}
-              onChange={(e) => setPriceText(e.target.value)}
+              value={costText}
+              onChange={(e) => setCostText(e.target.value)}
+              placeholder="1,00"
+              required
+            />
+            <p className="text-[11px] text-slate-500 mt-1">Ce que la caserne paye.</p>
+          </div>
+          <div>
+            <label className="label">Prix de vente (€)</label>
+            <input
+              className="input"
+              inputMode="decimal"
+              value={saleText}
+              onChange={(e) => setSaleText(e.target.value)}
               placeholder="1,50"
               required
             />
+            <p className="text-[11px] text-slate-500 mt-1">Revient à la caserne.</p>
           </div>
           <div>
-            <label className="label">Stock</label>
+            <label className="label">Commission (€)</label>
             <input
               className="input"
-              type="number"
-              min={0}
-              value={stock}
-              onChange={(e) => setStock(e.target.value)}
+              inputMode="decimal"
+              value={commissionText}
+              onChange={(e) => setCommissionText(e.target.value)}
+              placeholder="0,10"
               required
             />
+            <p className="text-[11px] text-slate-500 mt-1">Caisse noire.</p>
           </div>
+        </div>
+
+        <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-slate-600">Prix client (vente + commission)</span>
+            <span className="font-bold text-brand-700">{formatPrice(clientCentsPreview)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-slate-600">Marge caserne (vente − achat)</span>
+            <span
+              className={`font-medium ${
+                marginCentsPreview < 0 ? 'text-red-600' : 'text-emerald-700'
+              }`}
+            >
+              {formatPrice(marginCentsPreview)}
+            </span>
+          </div>
+        </div>
+
+        <div>
+          <label className="label">Stock</label>
+          <input
+            className="input"
+            type="number"
+            min={0}
+            value={stock}
+            onChange={(e) => setStock(e.target.value)}
+            required
+          />
         </div>
 
         {product && (

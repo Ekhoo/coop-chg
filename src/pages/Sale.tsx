@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react'
 import { Minus, Plus, ShoppingCart, Trash2, Image as ImageIcon, Check } from 'lucide-react'
 import { useProducts, useCategories } from '@/hooks/useProducts'
-import { useCart, cartTotal } from '@/hooks/useCart'
+import { useCart, cartTotal, lineUnitCents } from '@/hooks/useCart'
 import { useCheckout } from '@/hooks/useCheckout'
 import { useToast } from '@/components/Toast'
 import { formatPrice } from '@/lib/format'
 import { publicImageUrl } from '@/lib/supabase'
-import type { Product } from '@/lib/database.types'
+import { clientPriceCents, type Product } from '@/lib/database.types'
 
 export function Sale() {
   const { data: products = [], isLoading } = useProducts()
@@ -172,7 +172,7 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }
           {product.name}
         </div>
         <div className="mt-auto pt-1 flex items-end justify-between">
-          <span className="font-bold text-brand-700">{formatPrice(product.price_cents)}</span>
+          <span className="font-bold text-brand-700">{formatPrice(clientPriceCents(product))}</span>
           <span className={`text-xs ${out ? 'text-red-600' : 'text-slate-500'}`}>
             {out ? 'Rupture' : `Stock: ${product.stock}`}
           </span>
@@ -223,9 +223,9 @@ function CartPanel({
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-sm truncate">{line.name}</div>
                   <div className="text-xs text-slate-500">
-                    {formatPrice(line.unit_price_cents)} × {line.qty} ={' '}
+                    {formatPrice(lineUnitCents(line))} × {line.qty} ={' '}
                     <span className="font-semibold text-slate-700">
-                      {formatPrice(line.unit_price_cents * line.qty)}
+                      {formatPrice(lineUnitCents(line) * line.qty)}
                     </span>
                   </div>
                 </div>

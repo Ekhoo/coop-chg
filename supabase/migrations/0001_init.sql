@@ -1,5 +1,12 @@
 -- Coop Nico — schéma initial
 -- À exécuter dans Supabase SQL Editor (ou via `supabase db push`).
+--
+-- Modèle de prix :
+--   * cost_price_cents  = prix d'achat unitaire (ce que la caserne paye)
+--   * sale_price_cents  = prix de vente unitaire qui revient à la caserne
+--   * commission_cents  = commission unitaire qui part en "caisse noire" (activités pompiers)
+--   * Total payé par le client = sale_price_cents + commission_cents
+--   * Marge caserne = sale_price_cents - cost_price_cents
 
 -- Extensions
 create extension if not exists "uuid-ossp";
@@ -25,14 +32,16 @@ create table if not exists public.categories (
 );
 
 create table if not exists public.products (
-  id          uuid primary key default uuid_generate_v4(),
-  category_id uuid references public.categories(id) on delete set null,
-  name        text not null,
-  price_cents int  not null check (price_cents >= 0),
-  stock       int  not null default 0 check (stock >= 0),
-  image_path  text,
-  archived    boolean not null default false,
-  created_at  timestamptz not null default now()
+  id                uuid primary key default uuid_generate_v4(),
+  category_id       uuid references public.categories(id) on delete set null,
+  name              text not null,
+  cost_price_cents  int  not null default 0  check (cost_price_cents >= 0),
+  sale_price_cents  int  not null            check (sale_price_cents >= 0),
+  commission_cents  int  not null default 0  check (commission_cents >= 0),
+  stock             int  not null default 0  check (stock >= 0),
+  image_path        text,
+  archived          boolean not null default false,
+  created_at        timestamptz not null default now()
 );
 create index if not exists products_category_idx on public.products(category_id);
 create index if not exists products_archived_idx on public.products(archived);
@@ -48,12 +57,14 @@ create index if not exists transactions_created_idx on public.transactions(creat
 create index if not exists transactions_seller_idx  on public.transactions(seller_id);
 
 create table if not exists public.transaction_items (
-  id               uuid primary key default uuid_generate_v4(),
-  transaction_id   uuid not null references public.transactions(id) on delete cascade,
-  product_id       uuid references public.products(id) on delete set null,
-  product_name     text not null,
-  unit_price_cents int  not null,
-  qty              int  not null check (qty > 0)
+  id                    uuid primary key default uuid_generate_v4(),
+  transaction_id        uuid not null references public.transactions(id) on delete cascade,
+  product_id            uuid references public.products(id) on delete set null,
+  product_name          text not null,
+  unit_cost_cents       int  not null,
+  unit_sale_cents       int  not null,
+  unit_commission_cents int  not null,
+  qty                   int  not null check (qty > 0)
 );
 create index if not exists tx_items_transaction_idx on public.transaction_items(transaction_id);
 create index if not exists tx_items_product_idx     on public.transaction_items(product_id);
@@ -180,6 +191,7 @@ declare
   v_item      jsonb;
   v_product   public.products%rowtype;
   v_qty       int;
+  v_unit_total int;
 begin
   if v_user_id is null then
     raise exception 'Non authentifié' using errcode = '28000';
@@ -230,12 +242,15 @@ begin
     where id = v_product.id;
 
     insert into public.transaction_items (
-      transaction_id, product_id, product_name, unit_price_cents, qty
+      transaction_id, product_id, product_name,
+      unit_cost_cents, unit_sale_cents, unit_commission_cents, qty
     ) values (
-      v_tx_id, v_product.id, v_product.name, v_product.price_cents, v_qty
+      v_tx_id, v_product.id, v_product.name,
+      v_product.cost_price_cents, v_product.sale_price_cents, v_product.commission_cents, v_qty
     );
 
-    v_total := v_total + (v_product.price_cents * v_qty);
+    v_unit_total := v_product.sale_price_cents + v_product.commission_cents;
+    v_total := v_total + (v_unit_total * v_qty);
   end loop;
 
   update public.transactions
@@ -257,10 +272,14 @@ create or replace view public.sales_by_product as
 select
   ti.product_id,
   ti.product_name,
-  sum(ti.qty)                       as qty_sold,
-  sum(ti.qty * ti.unit_price_cents) as revenue_cents,
-  min(t.created_at)                 as first_sold_at,
-  max(t.created_at)                 as last_sold_at
+  sum(ti.qty)                                                          as qty_sold,
+  sum(ti.qty * (ti.unit_sale_cents + ti.unit_commission_cents))        as total_revenue_cents,
+  sum(ti.qty * ti.unit_sale_cents)                                     as caserne_revenue_cents,
+  sum(ti.qty * ti.unit_commission_cents)                               as commission_cents,
+  sum(ti.qty * ti.unit_cost_cents)                                     as cost_cents,
+  sum(ti.qty * (ti.unit_sale_cents - ti.unit_cost_cents))              as caserne_margin_cents,
+  min(t.created_at)                                                    as first_sold_at,
+  max(t.created_at)                                                    as last_sold_at
 from public.transaction_items ti
 join public.transactions t on t.id = ti.transaction_id
 group by ti.product_id, ti.product_name;
@@ -274,7 +293,6 @@ insert into storage.buckets (id, name, public)
 values ('product-images', 'product-images', true)
 on conflict (id) do nothing;
 
--- Règles d'upload : seul un admin peut uploader/modifier les images
 drop policy if exists product_images_read on storage.objects;
 create policy product_images_read on storage.objects
   for select using (bucket_id = 'product-images');

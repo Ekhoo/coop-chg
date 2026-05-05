@@ -11,6 +11,16 @@ interface TxWithDetails extends Transaction {
   seller_name: string
 }
 
+interface ProductBreakdown {
+  product_name: string
+  qty: number
+  client_cents: number
+  caserne_cents: number
+  commission_cents: number
+  cost_cents: number
+  margin_cents: number
+}
+
 export function SalesPage() {
   const today = new Date()
   const [from, setFrom] = useState(format(startOfMonth(today), 'yyyy-MM-dd'))
@@ -66,35 +76,70 @@ export function SalesPage() {
 
   const stats = useMemo(() => {
     const txs = data ?? []
-    const totalCents = txs.reduce((s, t) => s + t.total_cents, 0)
+    let clientTotal = 0
+    let caserneTotal = 0
+    let commissionTotal = 0
+    let costTotal = 0
     const txCount = txs.length
-    const byProductMap = new Map<string, { product_name: string; qty: number; revenue_cents: number }>()
-    const bySellerMap = new Map<string, { seller_name: string; qty: number; revenue_cents: number }>()
+    const byProductMap = new Map<string, ProductBreakdown>()
+    const bySellerMap = new Map<
+      string,
+      { seller_name: string; qty: number; client_cents: number }
+    >()
+
     for (const t of txs) {
-      const sellerKey = t.seller_id
-      const sellerEntry = bySellerMap.get(sellerKey) ?? {
+      const sellerEntry = bySellerMap.get(t.seller_id) ?? {
         seller_name: t.seller_name,
         qty: 0,
-        revenue_cents: 0,
+        client_cents: 0,
       }
-      sellerEntry.revenue_cents += t.total_cents
+      sellerEntry.client_cents += t.total_cents
+
       for (const it of t.items) {
+        const lineClient = (it.unit_sale_cents + it.unit_commission_cents) * it.qty
+        const lineCaserne = it.unit_sale_cents * it.qty
+        const lineCommission = it.unit_commission_cents * it.qty
+        const lineCost = it.unit_cost_cents * it.qty
+
+        clientTotal += lineClient
+        caserneTotal += lineCaserne
+        commissionTotal += lineCommission
+        costTotal += lineCost
         sellerEntry.qty += it.qty
-        const key = it.product_name
-        const entry = byProductMap.get(key) ?? {
-          product_name: it.product_name,
-          qty: 0,
-          revenue_cents: 0,
-        }
+
+        const entry =
+          byProductMap.get(it.product_name) ??
+          ({
+            product_name: it.product_name,
+            qty: 0,
+            client_cents: 0,
+            caserne_cents: 0,
+            commission_cents: 0,
+            cost_cents: 0,
+            margin_cents: 0,
+          } satisfies ProductBreakdown)
         entry.qty += it.qty
-        entry.revenue_cents += it.qty * it.unit_price_cents
-        byProductMap.set(key, entry)
+        entry.client_cents += lineClient
+        entry.caserne_cents += lineCaserne
+        entry.commission_cents += lineCommission
+        entry.cost_cents += lineCost
+        entry.margin_cents += lineCaserne - lineCost
+        byProductMap.set(it.product_name, entry)
       }
-      bySellerMap.set(sellerKey, sellerEntry)
+      bySellerMap.set(t.seller_id, sellerEntry)
     }
-    const byProduct = [...byProductMap.values()].sort((a, b) => b.revenue_cents - a.revenue_cents)
-    const bySeller = [...bySellerMap.values()].sort((a, b) => b.revenue_cents - a.revenue_cents)
-    return { totalCents, txCount, byProduct, bySeller }
+    const byProduct = [...byProductMap.values()].sort((a, b) => b.client_cents - a.client_cents)
+    const bySeller = [...bySellerMap.values()].sort((a, b) => b.client_cents - a.client_cents)
+    return {
+      clientTotal,
+      caserneTotal,
+      commissionTotal,
+      costTotal,
+      caserneMargin: caserneTotal - costTotal,
+      txCount,
+      byProduct,
+      bySeller,
+    }
   }, [data])
 
   async function handleExportPdf() {
@@ -103,7 +148,11 @@ export function SalesPage() {
     generateSalesPdf({
       from: fromDate,
       to: toDate,
-      totalCents: stats.totalCents,
+      clientTotal: stats.clientTotal,
+      caserneTotal: stats.caserneTotal,
+      commissionTotal: stats.commissionTotal,
+      costTotal: stats.costTotal,
+      caserneMargin: stats.caserneMargin,
       txCount: stats.txCount,
       byProduct: stats.byProduct,
       bySeller: stats.bySeller,
@@ -116,7 +165,7 @@ export function SalesPage() {
     })
   }
 
-  const ticketAvg = stats.txCount > 0 ? stats.totalCents / stats.txCount : 0
+  const ticketAvg = stats.txCount > 0 ? stats.clientTotal / stats.txCount : 0
 
   return (
     <div className="space-y-4">
@@ -155,72 +204,93 @@ export function SalesPage() {
         <DatePresets onPick={(f, t) => { setFrom(f); setTo(t) }} />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Kpi label="Total des ventes" value={formatPrice(stats.totalCents)} />
-        <Kpi label="Transactions" value={String(stats.txCount)} />
-        <Kpi label="Ticket moyen" value={formatPrice(Math.round(ticketAvg))} />
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <Kpi label="Total client" value={formatPrice(stats.clientTotal)} accent="brand" />
+        <Kpi label="Part caserne" value={formatPrice(stats.caserneTotal)} />
+        <Kpi label="Caisse noire" value={formatPrice(stats.commissionTotal)} accent="purple" />
+        <Kpi label="Coût d'achat" value={formatPrice(stats.costTotal)} muted />
+        <Kpi
+          label="Marge caserne"
+          value={formatPrice(stats.caserneMargin)}
+          accent={stats.caserneMargin >= 0 ? 'green' : 'red'}
+        />
+        <Kpi label="Transactions" value={`${stats.txCount} • ⌀ ${formatPrice(Math.round(ticketAvg))}`} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="card overflow-hidden">
-          <div className="px-4 py-2 border-b border-slate-200 font-semibold text-sm">
-            Top articles
-          </div>
-          {stats.byProduct.length === 0 ? (
-            <div className="p-4 text-center text-sm text-slate-500">Aucune vente sur la période.</div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-600">
-                <tr>
-                  <th className="text-left px-3 py-2">Article</th>
-                  <th className="text-right px-3 py-2 w-20">Qté</th>
-                  <th className="text-right px-3 py-2 w-24">CA</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {stats.byProduct.map((r) => (
-                  <tr key={r.product_name}>
-                    <td className="px-3 py-2">{r.product_name}</td>
-                    <td className="px-3 py-2 text-right">{r.qty}</td>
-                    <td className="px-3 py-2 text-right font-medium">
-                      {formatPrice(r.revenue_cents)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+      <div className="card overflow-x-auto">
+        <div className="px-4 py-2 border-b border-slate-200 font-semibold text-sm">
+          Ventilation par article
         </div>
+        {stats.byProduct.length === 0 ? (
+          <div className="p-4 text-center text-sm text-slate-500">Aucune vente sur la période.</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-slate-600">
+              <tr>
+                <th className="text-left px-3 py-2">Article</th>
+                <th className="text-right px-3 py-2">Qté</th>
+                <th className="text-right px-3 py-2">Client</th>
+                <th className="text-right px-3 py-2">Caserne</th>
+                <th className="text-right px-3 py-2">Caisse noire</th>
+                <th className="text-right px-3 py-2">Coût</th>
+                <th className="text-right px-3 py-2">Marge</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {stats.byProduct.map((r) => (
+                <tr key={r.product_name}>
+                  <td className="px-3 py-2 font-medium">{r.product_name}</td>
+                  <td className="px-3 py-2 text-right">{r.qty}</td>
+                  <td className="px-3 py-2 text-right font-medium">{formatPrice(r.client_cents)}</td>
+                  <td className="px-3 py-2 text-right">{formatPrice(r.caserne_cents)}</td>
+                  <td className="px-3 py-2 text-right text-purple-700">
+                    {formatPrice(r.commission_cents)}
+                  </td>
+                  <td className="px-3 py-2 text-right text-slate-500">
+                    {formatPrice(r.cost_cents)}
+                  </td>
+                  <td
+                    className={`px-3 py-2 text-right font-medium ${
+                      r.margin_cents < 0 ? 'text-red-600' : 'text-emerald-700'
+                    }`}
+                  >
+                    {formatPrice(r.margin_cents)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
 
-        <div className="card overflow-hidden">
-          <div className="px-4 py-2 border-b border-slate-200 font-semibold text-sm">
-            Par vendeur
-          </div>
-          {stats.bySeller.length === 0 ? (
-            <div className="p-4 text-center text-sm text-slate-500">—</div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-600">
-                <tr>
-                  <th className="text-left px-3 py-2">Vendeur</th>
-                  <th className="text-right px-3 py-2 w-20">Articles</th>
-                  <th className="text-right px-3 py-2 w-24">CA</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {stats.bySeller.map((r) => (
-                  <tr key={r.seller_name}>
-                    <td className="px-3 py-2">{r.seller_name}</td>
-                    <td className="px-3 py-2 text-right">{r.qty}</td>
-                    <td className="px-3 py-2 text-right font-medium">
-                      {formatPrice(r.revenue_cents)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+      <div className="card overflow-x-auto">
+        <div className="px-4 py-2 border-b border-slate-200 font-semibold text-sm">
+          Par vendeur
         </div>
+        {stats.bySeller.length === 0 ? (
+          <div className="p-4 text-center text-sm text-slate-500">—</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-slate-600">
+              <tr>
+                <th className="text-left px-3 py-2">Vendeur</th>
+                <th className="text-right px-3 py-2 w-28">Articles</th>
+                <th className="text-right px-3 py-2 w-28">Total client</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {stats.bySeller.map((r) => (
+                <tr key={r.seller_name}>
+                  <td className="px-3 py-2">{r.seller_name}</td>
+                  <td className="px-3 py-2 text-right">{r.qty}</td>
+                  <td className="px-3 py-2 text-right font-medium">
+                    {formatPrice(r.client_cents)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       <div className="card overflow-hidden">
@@ -233,41 +303,65 @@ export function SalesPage() {
         ) : (data ?? []).length === 0 ? (
           <div className="p-4 text-center text-sm text-slate-500">Aucune transaction.</div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-slate-600">
-              <tr>
-                <th className="text-left px-3 py-2">Date</th>
-                <th className="text-left px-3 py-2">Vendeur</th>
-                <th className="text-left px-3 py-2">Articles</th>
-                <th className="text-right px-3 py-2 w-24">Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {(data ?? []).map((t) => (
-                <tr key={t.id}>
-                  <td className="px-3 py-2 whitespace-nowrap">{formatDateTime(t.created_at)}</td>
-                  <td className="px-3 py-2">{t.seller_name}</td>
-                  <td className="px-3 py-2 text-slate-600">
-                    {t.items.map((it) => `${it.qty}× ${it.product_name}`).join(', ')}
-                  </td>
-                  <td className="px-3 py-2 text-right font-medium">
-                    {formatPrice(t.total_cents)}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-600">
+                <tr>
+                  <th className="text-left px-3 py-2">Date</th>
+                  <th className="text-left px-3 py-2">Vendeur</th>
+                  <th className="text-left px-3 py-2">Articles</th>
+                  <th className="text-right px-3 py-2 w-24">Total</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {(data ?? []).map((t) => (
+                  <tr key={t.id}>
+                    <td className="px-3 py-2 whitespace-nowrap">{formatDateTime(t.created_at)}</td>
+                    <td className="px-3 py-2">{t.seller_name}</td>
+                    <td className="px-3 py-2 text-slate-600">
+                      {t.items.map((it) => `${it.qty}× ${it.product_name}`).join(', ')}
+                    </td>
+                    <td className="px-3 py-2 text-right font-medium">
+                      {formatPrice(t.total_cents)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
   )
 }
 
-function Kpi({ label, value }: { label: string; value: string }) {
+function Kpi({
+  label,
+  value,
+  accent,
+  muted,
+}: {
+  label: string
+  value: string
+  accent?: 'brand' | 'purple' | 'green' | 'red'
+  muted?: boolean
+}) {
+  const valueColor =
+    accent === 'brand'
+      ? 'text-brand-700'
+      : accent === 'purple'
+        ? 'text-purple-700'
+        : accent === 'green'
+          ? 'text-emerald-700'
+          : accent === 'red'
+            ? 'text-red-600'
+            : muted
+              ? 'text-slate-500'
+              : 'text-slate-900'
   return (
-    <div className="card p-4">
-      <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
-      <div className="text-2xl font-bold text-slate-900 mt-1">{value}</div>
+    <div className="card p-3">
+      <div className="text-[11px] uppercase tracking-wide text-slate-500">{label}</div>
+      <div className={`text-lg font-bold mt-1 ${valueColor}`}>{value}</div>
     </div>
   )
 }
