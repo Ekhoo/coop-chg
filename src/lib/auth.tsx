@@ -20,37 +20,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   async function loadProfile(userId: string) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single<Profile>()
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single<Profile>()
+      if (error) {
+        console.error('[auth] loadProfile error', error)
+        setProfile(null)
+        return
+      }
+      setProfile(data)
+    } catch (e) {
+      console.error('[auth] loadProfile exception', e)
       setProfile(null)
-      return
     }
-    setProfile(data)
   }
 
   useEffect(() => {
     let mounted = true
 
-    supabase.auth.getSession().then(async ({ data }) => {
+    // onAuthStateChange émet INITIAL_SESSION dès l'abonnement, donc pas besoin
+    // d'appeler getSession() en plus (évite une race condition au refresh).
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, newSession) => {
       if (!mounted) return
-      setSession(data.session)
-      if (data.session) await loadProfile(data.session.user.id)
-      setLoading(false)
-    })
-
-    const { data: subscription } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
-      setLoading(true)
-      setSession(newSession)
-      if (newSession) {
-        await loadProfile(newSession.user.id)
-      } else {
-        setProfile(null)
-      }
-      setLoading(false)
+      ;(async () => {
+        setSession(newSession)
+        try {
+          if (newSession) {
+            await loadProfile(newSession.user.id)
+          } else {
+            setProfile(null)
+          }
+        } finally {
+          if (mounted) setLoading(false)
+        }
+      })()
     })
 
     return () => {
