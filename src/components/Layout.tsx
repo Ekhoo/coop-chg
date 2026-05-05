@@ -38,8 +38,8 @@ export function Layout() {
             </button>
           </div>
         </div>
-        <nav className="bg-brand-700">
-          <div className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-2 text-sm">
+        <nav className="mx-auto max-w-6xl px-4 pb-4">
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
             <NavItem to="/" label="Vente" icon={<ShoppingCart className="h-4 w-4" />} end />
             {isAdmin && (
               <>
@@ -91,10 +91,10 @@ function NavItem({
       to={to}
       end={end}
       className={({ isActive }) =>
-        `flex items-center gap-2 whitespace-nowrap px-3 py-2 transition-colors ${
+        `flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all ${
           isActive
-            ? 'bg-white text-brand-700 rounded-t-md font-medium'
-            : 'text-white/90 hover:bg-brand-600'
+            ? 'bg-white text-brand-700 shadow-lg shadow-black/10 ring-1 ring-black/5'
+            : 'bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm'
         }`
       }
     >
