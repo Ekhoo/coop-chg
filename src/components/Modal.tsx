@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 
 interface Props {
@@ -14,15 +15,23 @@ export function Modal({ open, onClose, title, children, footer }: Props) {
     function onEsc(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()
     }
-    if (open) document.addEventListener('keydown', onEsc)
-    return () => document.removeEventListener('keydown', onEsc)
+    if (open) {
+      document.addEventListener('keydown', onEsc)
+      // empêche le body de scroller derrière le modal
+      const prev = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.removeEventListener('keydown', onEsc)
+        document.body.style.overflow = prev
+      }
+    }
   }, [open, onClose])
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-40 bg-slate-900/50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
@@ -42,6 +51,7 @@ export function Modal({ open, onClose, title, children, footer }: Props) {
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
