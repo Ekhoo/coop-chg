@@ -40,12 +40,12 @@ export function Layout() {
         </div>
         <nav className="mx-auto max-w-6xl px-4 pb-4">
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-            <NavItem to="/" label="Vente" icon={<ShoppingCart className="h-4 w-4" />} end />
+            <NavItem to="/" label="Catalogue" icon={<ShoppingCart className="h-4 w-4" />} end />
             {isAdmin && (
               <>
                 <NavItem
                   to="/admin/products"
-                  label="Articles"
+                  label="Stock"
                   icon={<Package className="h-4 w-4" />}
                 />
                 <NavItem
@@ -60,7 +60,7 @@ export function Layout() {
                 />
                 <NavItem
                   to="/admin/sales"
-                  label="Ventes"
+                  label="Comptabilité"
                   icon={<BarChart3 className="h-4 w-4" />}
                 />
               </>

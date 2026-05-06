@@ -196,8 +196,8 @@ function CartPanel({
   const cart = useCart()
 
   return (
-    <div className="card flex flex-col h-full max-h-full lg:sticky lg:top-4">
-      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+    <div className="card flex flex-col lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]">
+      <div className="shrink-0 flex items-center justify-between border-b border-slate-200 px-4 py-3">
         <div className="flex items-center gap-2 font-semibold">
           <ShoppingCart className="h-4 w-4" />
           Panier
@@ -211,7 +211,7 @@ function CartPanel({
           </button>
         )}
       </div>
-      <div className="flex-1 overflow-auto">
+      <div className="min-h-0 overflow-auto">
         {cart.lines.length === 0 ? (
           <div className="p-6 text-center text-sm text-slate-500">
             Sélectionnez des articles
@@ -232,23 +232,24 @@ function CartPanel({
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => cart.setQty(line.product_id, line.qty - 1)}
-                    className="rounded-md border border-slate-300 p-1 hover:bg-slate-50"
+                    className="rounded-md border border-slate-300 p-1.5 hover:bg-slate-50"
                   >
-                    <Minus className="h-3 w-3" />
+                    <Minus className="h-4 w-4" />
                   </button>
                   <span className="w-6 text-center text-sm font-medium">{line.qty}</span>
                   <button
                     onClick={() => cart.setQty(line.product_id, line.qty + 1)}
                     disabled={line.qty >= line.stock}
-                    className="rounded-md border border-slate-300 p-1 hover:bg-slate-50 disabled:opacity-40"
+                    className="rounded-md border border-slate-300 p-1.5 hover:bg-slate-50 disabled:opacity-40"
                   >
-                    <Plus className="h-3 w-3" />
+                    <Plus className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => cart.remove(line.product_id)}
-                    className="rounded-md p-1 text-slate-400 hover:text-red-600"
+                    className="rounded-md border border-slate-300 p-1.5 ml-1 text-slate-500 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                    title="Supprimer"
                   >
-                    <Trash2 className="h-3 w-3" />
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               </li>
@@ -256,7 +257,7 @@ function CartPanel({
           </ul>
         )}
       </div>
-      <div className="border-t border-slate-200 p-4 space-y-3">
+      <div className="shrink-0 border-t border-slate-200 p-4 space-y-3">
         <div className="flex items-center justify-between text-lg">
           <span className="font-medium text-slate-700">Total</span>
           <span className="font-bold text-brand-700">{formatPrice(total)}</span>
