@@ -1,6 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Download, FileText } from 'lucide-react'
+import {
+  Download,
+  FileText,
+  Wallet,
+  Building2,
+  Sparkles,
+  ShoppingBag,
+  TrendingUp,
+  Receipt,
+} from 'lucide-react'
 import { startOfMonth, endOfMonth, startOfDay, endOfDay, format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { formatPrice, formatDateTime } from '@/lib/format'
@@ -205,16 +214,43 @@ export function SalesPage() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <Kpi label="Total client" value={formatPrice(stats.clientTotal)} accent="brand" />
-        <Kpi label="Part caserne" value={formatPrice(stats.caserneTotal)} />
-        <Kpi label="Caisse noire" value={formatPrice(stats.commissionTotal)} accent="purple" />
-        <Kpi label="Coût d'achat" value={formatPrice(stats.costTotal)} muted />
+        <Kpi
+          label="Total client"
+          value={formatPrice(stats.clientTotal)}
+          icon={<Wallet className="h-5 w-5" />}
+          color="brand"
+        />
+        <Kpi
+          label="Part caserne"
+          value={formatPrice(stats.caserneTotal)}
+          icon={<Building2 className="h-5 w-5" />}
+          color="sky"
+        />
+        <Kpi
+          label="Caisse noire"
+          value={formatPrice(stats.commissionTotal)}
+          icon={<Sparkles className="h-5 w-5" />}
+          color="purple"
+        />
+        <Kpi
+          label="Coût d'achat"
+          value={formatPrice(stats.costTotal)}
+          icon={<ShoppingBag className="h-5 w-5" />}
+          color="slate"
+        />
         <Kpi
           label="Marge caserne"
           value={formatPrice(stats.caserneMargin)}
-          accent={stats.caserneMargin >= 0 ? 'green' : 'red'}
+          icon={<TrendingUp className="h-5 w-5" />}
+          color={stats.caserneMargin >= 0 ? 'emerald' : 'rose'}
         />
-        <Kpi label="Transactions" value={`${stats.txCount} • ⌀ ${formatPrice(Math.round(ticketAvg))}`} />
+        <Kpi
+          label="Transactions"
+          value={`${stats.txCount}`}
+          subtitle={`⌀ ${formatPrice(Math.round(ticketAvg))}`}
+          icon={<Receipt className="h-5 w-5" />}
+          color="amber"
+        />
       </div>
 
       <div className="card overflow-x-auto">
@@ -335,33 +371,40 @@ export function SalesPage() {
   )
 }
 
+type KpiColor = 'brand' | 'purple' | 'emerald' | 'rose' | 'sky' | 'amber' | 'slate'
+
+const kpiColorMap: Record<KpiColor, { bg: string; text: string; valueText: string }> = {
+  brand: { bg: 'bg-brand-50', text: 'text-brand-600', valueText: 'text-brand-700' },
+  purple: { bg: 'bg-purple-50', text: 'text-purple-600', valueText: 'text-purple-700' },
+  emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', valueText: 'text-emerald-700' },
+  rose: { bg: 'bg-rose-50', text: 'text-rose-600', valueText: 'text-rose-700' },
+  sky: { bg: 'bg-sky-50', text: 'text-sky-600', valueText: 'text-sky-700' },
+  amber: { bg: 'bg-amber-50', text: 'text-amber-600', valueText: 'text-amber-700' },
+  slate: { bg: 'bg-slate-100', text: 'text-slate-600', valueText: 'text-slate-700' },
+}
+
 function Kpi({
   label,
   value,
-  accent,
-  muted,
+  subtitle,
+  icon,
+  color = 'slate',
 }: {
   label: string
   value: string
-  accent?: 'brand' | 'purple' | 'green' | 'red'
-  muted?: boolean
+  subtitle?: string
+  icon: ReactNode
+  color?: KpiColor
 }) {
-  const valueColor =
-    accent === 'brand'
-      ? 'text-brand-700'
-      : accent === 'purple'
-        ? 'text-purple-700'
-        : accent === 'green'
-          ? 'text-emerald-700'
-          : accent === 'red'
-            ? 'text-red-600'
-            : muted
-              ? 'text-slate-500'
-              : 'text-slate-900'
+  const c = kpiColorMap[color]
   return (
-    <div className="card p-3">
-      <div className="text-[11px] uppercase tracking-wide text-slate-500">{label}</div>
-      <div className={`text-lg font-bold mt-1 ${valueColor}`}>{value}</div>
+    <div className="card p-3 flex items-start gap-3">
+      <div className={`shrink-0 rounded-xl p-2 ${c.bg} ${c.text}`}>{icon}</div>
+      <div className="min-w-0 flex-1">
+        <div className="text-[11px] uppercase tracking-wide text-slate-500 truncate">{label}</div>
+        <div className={`text-lg font-bold mt-0.5 ${c.valueText}`}>{value}</div>
+        {subtitle && <div className="text-[11px] text-slate-400 mt-0.5">{subtitle}</div>}
+      </div>
     </div>
   )
 }

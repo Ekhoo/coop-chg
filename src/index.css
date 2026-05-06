@@ -10,15 +10,33 @@
   }
   body {
     overscroll-behavior-y: none;
+    font-feature-settings: 'cv11', 'ss01';
+    /* dot-grid très subtil pour casser la monotonie du fond */
+    background-image: radial-gradient(
+      circle at 1px 1px,
+      rgba(15, 23, 42, 0.06) 1px,
+      transparent 0
+    );
+    background-size: 22px 22px;
+  }
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.015em;
   }
 }
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98];
   }
   .btn-primary {
-    @apply btn bg-brand-600 text-white hover:bg-brand-700 focus:ring-brand-500;
+    @apply btn text-white shadow-sm focus:ring-brand-500;
+    background-image: linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f97316 100%);
+  }
+  .btn-primary:hover {
+    @apply shadow-md;
+    background-image: linear-gradient(135deg, #b91c1c 0%, #dc2626 50%, #ea580c 100%);
   }
   .btn-secondary {
     @apply btn bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 focus:ring-slate-400;
@@ -36,6 +54,9 @@
     @apply block text-sm font-medium text-slate-700 mb-1;
   }
   .card {
-    @apply bg-white rounded-xl border border-slate-200 shadow-sm;
+    @apply bg-white rounded-2xl border border-slate-200/80 shadow-card;
+  }
+  .card-interactive {
+    @apply card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-hover;
   }
 }

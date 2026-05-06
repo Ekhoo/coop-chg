@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import { useToast } from '@/components/Toast'
 import { Modal } from '@/components/Modal'
+import { ActiveBadge, InactiveBadge, RoleBadge } from '@/components/Badge'
 import { formatDate } from '@/lib/format'
 import type { Profile, Role } from '@/lib/database.types'
 
@@ -106,24 +107,9 @@ function UserRow({ user, isMe }: { user: Profile; isMe: boolean }) {
     <tr className={user.active ? '' : 'opacity-50'}>
       <td className="px-3 py-2 font-medium">{user.display_name}</td>
       <td className="px-3 py-2">
-        <span
-          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-            user.role === 'admin'
-              ? 'bg-purple-100 text-purple-700'
-              : 'bg-slate-100 text-slate-700'
-          }`}
-        >
-          {user.role === 'admin' ? <ShieldCheck className="h-3 w-3" /> : null}
-          {user.role === 'admin' ? 'Admin' : 'Vendeur'}
-        </span>
+        <RoleBadge role={user.role} />
       </td>
-      <td className="px-3 py-2">
-        {user.active ? (
-          <span className="text-emerald-700">Actif</span>
-        ) : (
-          <span className="text-slate-500">Désactivé</span>
-        )}
-      </td>
+      <td className="px-3 py-2">{user.active ? <ActiveBadge /> : <InactiveBadge />}</td>
       <td className="px-3 py-2 text-slate-500">{formatDate(user.created_at)}</td>
       <td className="px-3 py-2 text-right space-x-1">
         {!isMe && (

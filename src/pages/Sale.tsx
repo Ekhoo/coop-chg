@@ -4,6 +4,7 @@ import { useProducts, useCategories } from '@/hooks/useProducts'
 import { useCart, cartTotal, lineUnitCents } from '@/hooks/useCart'
 import { useCheckout } from '@/hooks/useCheckout'
 import { useToast } from '@/components/Toast'
+import { StockBadge } from '@/components/Badge'
 import { formatPrice } from '@/lib/format'
 import { publicImageUrl } from '@/lib/supabase'
 import { clientPriceCents, type Product } from '@/lib/database.types'
@@ -156,26 +157,31 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }
     <button
       onClick={onAdd}
       disabled={out}
-      className={`card flex flex-col text-left overflow-hidden transition-transform active:scale-95 ${
-        out ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md cursor-pointer'
+      className={`card flex flex-col text-left overflow-hidden transition-all duration-200 active:scale-95 ${
+        out
+          ? 'opacity-60 cursor-not-allowed'
+          : 'hover:-translate-y-0.5 hover:shadow-card-hover cursor-pointer'
       }`}
     >
-      <div className="aspect-square bg-slate-100 flex items-center justify-center overflow-hidden">
+      <div className="relative aspect-square bg-slate-100 flex items-center justify-center overflow-hidden">
         {imageUrl ? (
           <img src={imageUrl} alt={product.name} className="h-full w-full object-cover" />
         ) : (
           <ImageIcon className="h-10 w-10 text-slate-300" />
         )}
+        <div className="absolute top-1.5 right-1.5">
+          <StockBadge stock={product.stock} />
+        </div>
       </div>
-      <div className="p-2 flex-1 flex flex-col">
+      <div className="p-2.5 flex-1 flex flex-col">
         <div className="font-medium text-sm leading-tight line-clamp-2 text-slate-900">
           {product.name}
         </div>
-        <div className="mt-auto pt-1 flex items-end justify-between">
-          <span className="font-bold text-brand-700">{formatPrice(clientPriceCents(product))}</span>
-          <span className={`text-xs ${out ? 'text-red-600' : 'text-slate-500'}`}>
-            {out ? 'Rupture' : `Stock: ${product.stock}`}
+        <div className="mt-auto pt-1.5 flex items-end justify-between">
+          <span className="font-bold text-brand-700 text-base">
+            {formatPrice(clientPriceCents(product))}
           </span>
+          {!out && <span className="text-[11px] text-slate-400">Stock {product.stock}</span>}
         </div>
       </div>
     </button>

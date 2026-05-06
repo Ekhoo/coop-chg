@@ -15,22 +15,34 @@ export function Layout() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="bg-brand-600 text-white shadow-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <Link to="/" className="flex items-center gap-2 font-bold text-lg">
-            <Flame className="h-6 w-6" />
-            Coop Nico
+      <header className="relative overflow-hidden text-white shadow-lg bg-gradient-to-br from-brand-800 via-brand-600 to-ember-500">
+        {/* halo lumineux discret en haut à droite */}
+        <div
+          className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-white/10 blur-3xl"
+          aria-hidden
+        />
+        <div className="relative mx-auto flex max-w-6xl items-center justify-between px-4 pt-4 pb-3">
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="rounded-xl bg-white/15 p-2 ring-1 ring-white/25 backdrop-blur-sm shadow-inner transition-all group-hover:bg-white/25 group-hover:scale-105">
+              <Flame className="h-5 w-5" strokeWidth={2.5} />
+            </div>
+            <div className="leading-tight">
+              <div className="font-bold text-lg tracking-tight">Coop Nico</div>
+              <div className="text-[11px] uppercase tracking-[0.18em] text-white/70">
+                Caisse de la caserne
+              </div>
+            </div>
           </Link>
           <div className="flex items-center gap-3">
             <div className="text-sm text-right hidden sm:block">
               <div className="font-medium">{profile?.display_name}</div>
-              <div className="text-xs opacity-80">
+              <div className="text-xs text-white/75">
                 {profile?.role === 'admin' ? 'Administrateur' : 'Vendeur'}
               </div>
             </div>
             <button
               onClick={handleSignOut}
-              className="btn-ghost text-white hover:bg-brand-700"
+              className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm text-white/90 hover:bg-white/15 transition-colors"
               title="Se déconnecter"
             >
               <LogOut className="h-4 w-4" />
@@ -38,7 +50,7 @@ export function Layout() {
             </button>
           </div>
         </div>
-        <nav className="mx-auto max-w-6xl px-4 pb-4">
+        <nav className="relative mx-auto max-w-6xl px-4 pb-4">
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
             <NavItem to="/" label="Catalogue" icon={<ShoppingCart className="h-4 w-4" />} end />
             {isAdmin && (

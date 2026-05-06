@@ -7,6 +7,7 @@ import { supabase, publicImageUrl } from '@/lib/supabase'
 import { useProducts, useCategories } from '@/hooks/useProducts'
 import { useToast } from '@/components/Toast'
 import { Modal } from '@/components/Modal'
+import { ArchivedBadge, StockBadge } from '@/components/Badge'
 import { formatPrice, parsePriceToCents } from '@/lib/format'
 import { clientPriceCents, type Product } from '@/lib/database.types'
 import { CategoriesSection } from './Categories'
@@ -150,7 +151,12 @@ function ProductRow({
           )}
         </div>
       </td>
-      <td className="px-3 py-2 font-medium">{product.name}</td>
+      <td className="px-3 py-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-medium">{product.name}</span>
+          {product.archived && <ArchivedBadge />}
+        </div>
+      </td>
       <td className="px-3 py-2 text-slate-600">{categoryName ?? '—'}</td>
       <td className="px-3 py-2 text-right text-slate-500">
         {formatPrice(product.cost_price_cents)}
@@ -163,26 +169,25 @@ function ProductRow({
         {formatPrice(clientPriceCents(product))}
       </td>
       <td className="px-3 py-2">
-        <div className="flex items-center justify-center gap-1">
-          <button
-            onClick={() => adjustStock.mutate(-1)}
-            disabled={product.stock <= 0 || adjustStock.isPending}
-            className="rounded-md border border-slate-300 p-1 hover:bg-slate-50 disabled:opacity-30"
-          >
-            <Minus className="h-3 w-3" />
-          </button>
-          <span className={`w-10 text-center font-medium ${
-            product.stock <= 5 ? 'text-red-600' : ''
-          }`}>
-            {product.stock}
-          </span>
-          <button
-            onClick={() => adjustStock.mutate(+1)}
-            disabled={adjustStock.isPending}
-            className="rounded-md border border-slate-300 p-1 hover:bg-slate-50"
-          >
-            <Plus className="h-3 w-3" />
-          </button>
+        <div className="flex flex-col items-center gap-1">
+          <div className="flex items-center justify-center gap-1">
+            <button
+              onClick={() => adjustStock.mutate(-1)}
+              disabled={product.stock <= 0 || adjustStock.isPending}
+              className="rounded-md border border-slate-300 p-1 hover:bg-slate-50 disabled:opacity-30"
+            >
+              <Minus className="h-3 w-3" />
+            </button>
+            <span className="w-10 text-center font-semibold tabular-nums">{product.stock}</span>
+            <button
+              onClick={() => adjustStock.mutate(+1)}
+              disabled={adjustStock.isPending}
+              className="rounded-md border border-slate-300 p-1 hover:bg-slate-50"
+            >
+              <Plus className="h-3 w-3" />
+            </button>
+          </div>
+          <StockBadge stock={product.stock} />
         </div>
       </td>
       <td className="px-3 py-2 text-right">
