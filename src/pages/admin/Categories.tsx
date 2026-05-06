@@ -7,25 +7,27 @@ import { useToast } from '@/components/Toast'
 import { Modal } from '@/components/Modal'
 import type { Category } from '@/lib/database.types'
 
-export function CategoriesPage() {
+export function CategoriesSection() {
   const { data: categories = [], isLoading } = useCategories({ includeArchived: true })
   const [editing, setEditing] = useState<Category | null>(null)
   const [creating, setCreating] = useState(false)
 
   return (
-    <div className="space-y-4">
+    <section className="space-y-3">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Catégories</h1>
-        <button onClick={() => setCreating(true)} className="btn-primary">
+        <h2 className="text-lg font-semibold text-slate-900">Catégories</h2>
+        <button onClick={() => setCreating(true)} className="btn-secondary">
           <Plus className="h-4 w-4" /> Nouvelle catégorie
         </button>
       </div>
 
       <div className="card overflow-hidden">
         {isLoading ? (
-          <div className="p-6 text-center text-slate-500">Chargement…</div>
+          <div className="p-4 text-center text-sm text-slate-500">Chargement…</div>
         ) : categories.length === 0 ? (
-          <div className="p-6 text-center text-slate-500">Aucune catégorie.</div>
+          <div className="p-4 text-center text-sm text-slate-500">
+            Aucune catégorie. Crées-en une pour pouvoir grouper les articles.
+          </div>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-slate-600">
@@ -33,7 +35,7 @@ export function CategoriesPage() {
                 <th className="text-left px-3 py-2">Nom</th>
                 <th className="text-left px-3 py-2 w-24">Ordre</th>
                 <th className="text-left px-3 py-2 w-28">Statut</th>
-                <th className="px-3 py-2 w-32"></th>
+                <th className="px-3 py-2 w-20"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -68,7 +70,7 @@ export function CategoriesPage() {
       {editing && (
         <CategoryFormModal category={editing} onClose={() => setEditing(null)} />
       )}
-    </div>
+    </section>
   )
 }
 

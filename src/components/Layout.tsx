@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LogOut, Package, ShoppingCart, Tag, Users, BarChart3, Flame } from 'lucide-react'
+import { LogOut, Package, ShoppingCart, Users, BarChart3, Flame } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 
 export function Layout() {
@@ -49,18 +49,13 @@ export function Layout() {
                   icon={<Package className="h-4 w-4" />}
                 />
                 <NavItem
-                  to="/admin/categories"
-                  label="Catégories"
-                  icon={<Tag className="h-4 w-4" />}
-                />
-                <NavItem
                   to="/admin/users"
                   label="Comptes"
                   icon={<Users className="h-4 w-4" />}
                 />
                 <NavItem
                   to="/admin/sales"
-                  label="Comptabilité"
+                  label="Rapports"
                   icon={<BarChart3 className="h-4 w-4" />}
                 />
               </>

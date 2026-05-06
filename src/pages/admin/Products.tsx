@@ -9,6 +9,7 @@ import { useToast } from '@/components/Toast'
 import { Modal } from '@/components/Modal'
 import { formatPrice, parsePriceToCents } from '@/lib/format'
 import { clientPriceCents, type Product } from '@/lib/database.types'
+import { CategoriesSection } from './Categories'
 
 export function ProductsPage() {
   const { data: products = [], isLoading } = useProducts({ includeArchived: true })
@@ -32,15 +33,20 @@ export function ProductsPage() {
   )
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-2xl font-bold">Articles</h1>
-        <button onClick={() => setCreating(true)} className="btn-primary">
-          <Plus className="h-4 w-4" /> Nouvel article
-        </button>
-      </div>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">Stock</h1>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <CategoriesSection />
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <h2 className="text-lg font-semibold text-slate-900">Articles</h2>
+          <button onClick={() => setCreating(true)} className="btn-primary">
+            <Plus className="h-4 w-4" /> Nouvel article
+          </button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
@@ -94,14 +100,15 @@ export function ProductsPage() {
         )}
       </div>
 
-      {creating && <ProductFormModal categories={categories} onClose={() => setCreating(false)} />}
-      {editing && (
-        <ProductFormModal
-          product={editing}
-          categories={categories}
-          onClose={() => setEditing(null)}
-        />
-      )}
+        {creating && <ProductFormModal categories={categories} onClose={() => setCreating(false)} />}
+        {editing && (
+          <ProductFormModal
+            product={editing}
+            categories={categories}
+            onClose={() => setEditing(null)}
+          />
+        )}
+      </section>
     </div>
   )
 }

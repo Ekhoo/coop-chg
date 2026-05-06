@@ -7,7 +7,6 @@ import { ToastViewport } from '@/components/Toast'
 import { Login } from '@/pages/Login'
 import { Sale } from '@/pages/Sale'
 import { ProductsPage } from '@/pages/admin/Products'
-import { CategoriesPage } from '@/pages/admin/Categories'
 import { UsersPage } from '@/pages/admin/Users'
 import { SalesPage } from '@/pages/admin/Sales'
 
@@ -38,10 +37,8 @@ export default function App() {
                 path="admin/products"
                 element={<ProtectedRoute adminOnly><ProductsPage /></ProtectedRoute>}
               />
-              <Route
-                path="admin/categories"
-                element={<ProtectedRoute adminOnly><CategoriesPage /></ProtectedRoute>}
-              />
+              {/* Redirige les anciens liens /admin/categories vers la nouvelle section dans Stock */}
+              <Route path="admin/categories" element={<Navigate to="/admin/products" replace />} />
               <Route
                 path="admin/users"
                 element={<ProtectedRoute adminOnly><UsersPage /></ProtectedRoute>}
