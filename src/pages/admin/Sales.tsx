@@ -14,7 +14,16 @@ import {
   Image as ImageIcon,
   Trophy,
 } from 'lucide-react'
-import { startOfMonth, endOfMonth, startOfDay, endOfDay, format } from 'date-fns'
+import {
+  startOfMonth,
+  endOfMonth,
+  startOfDay,
+  endOfDay,
+  startOfWeek,
+  endOfWeek,
+  subDays,
+  format,
+} from 'date-fns'
 import { supabase, publicImageUrl } from '@/lib/supabase'
 import { formatPrice, formatDateTime, formatDate } from '@/lib/format'
 import { DbHealth } from '@/components/DbHealth'
@@ -705,30 +714,35 @@ function PurgeButton({
 
 function DatePresets({ onPick }: { onPick: (from: string, to: string) => void }) {
   const today = new Date()
+  const yesterday = subDays(today, 1)
+  // Semaine française : commence le lundi
+  const weekOpts = { weekStartsOn: 1 as const }
+
+  const presets: { label: string; from: Date; to: Date }[] = [
+    { label: "Aujourd'hui", from: today, to: today },
+    { label: 'Hier', from: yesterday, to: yesterday },
+    {
+      label: 'Cette semaine',
+      from: startOfWeek(today, weekOpts),
+      to: endOfWeek(today, weekOpts),
+    },
+    { label: 'Ce mois', from: startOfMonth(today), to: endOfMonth(today) },
+  ]
+
   return (
-    <div className="flex gap-1 ml-auto">
-      <button
-        type="button"
-        className="btn-secondary text-xs"
-        onClick={() => {
-          const d = format(today, 'yyyy-MM-dd')
-          onPick(d, d)
-        }}
-      >
-        Aujourd'hui
-      </button>
-      <button
-        type="button"
-        className="btn-secondary text-xs"
-        onClick={() => {
-          onPick(
-            format(startOfMonth(today), 'yyyy-MM-dd'),
-            format(endOfMonth(today), 'yyyy-MM-dd')
-          )
-        }}
-      >
-        Ce mois
-      </button>
+    <div className="flex gap-1 ml-auto flex-wrap">
+      {presets.map((p) => (
+        <button
+          key={p.label}
+          type="button"
+          className="btn-secondary text-xs"
+          onClick={() =>
+            onPick(format(p.from, 'yyyy-MM-dd'), format(p.to, 'yyyy-MM-dd'))
+          }
+        >
+          {p.label}
+        </button>
+      ))}
     </div>
   )
 }
