@@ -424,7 +424,7 @@ function ProductFormModal({
               placeholder="1,00"
               required
             />
-            <p className="text-[11px] text-slate-500 mt-1">Ce que le foyer paye.</p>
+            <p className="text-[11px] text-slate-500 mt-1">Ce que la caserne paye.</p>
           </div>
           <div>
             <label className="label">Prix de vente (€)</label>
