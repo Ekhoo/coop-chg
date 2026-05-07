@@ -9,10 +9,16 @@ import {
   ShoppingBag,
   TrendingUp,
   Receipt,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react'
 import { startOfMonth, endOfMonth, startOfDay, endOfDay, format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
-import { formatPrice, formatDateTime } from '@/lib/format'
+import { formatPrice, formatDateTime, formatDate } from '@/lib/format'
+import { DbHealth } from '@/components/DbHealth'
+import { Modal } from '@/components/Modal'
+import { useToast } from '@/components/Toast'
+import { usePurgeTransactions } from '@/hooks/useDbStats'
 import type { Profile, Transaction, TransactionItem } from '@/lib/database.types'
 
 interface TxWithDetails extends Transaction {
@@ -177,17 +183,27 @@ export function SalesPage() {
   const ticketAvg = stats.txCount > 0 ? stats.clientTotal / stats.txCount : 0
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-2xl font-bold">Ventes</h1>
-        <button
-          onClick={handleExportPdf}
-          disabled={!data || data.length === 0}
-          className="btn-primary"
-        >
-          <Download className="h-4 w-4" /> Export PDF
-        </button>
+        <h1 className="text-2xl font-bold">Rapports</h1>
+        <div className="flex items-center gap-2">
+          <PurgeButton
+            from={fromDate}
+            to={toDate}
+            count={stats.txCount}
+            disabled={isLoading}
+          />
+          <button
+            onClick={handleExportPdf}
+            disabled={!data || data.length === 0}
+            className="btn-primary"
+          >
+            <Download className="h-4 w-4" /> Export PDF
+          </button>
+        </div>
       </div>
+
+      <DbHealth />
 
       <div className="card p-4 flex flex-wrap items-end gap-3">
         <div>
@@ -406,6 +422,124 @@ function Kpi({
         {subtitle && <div className="text-[11px] text-slate-400 mt-0.5">{subtitle}</div>}
       </div>
     </div>
+  )
+}
+
+function PurgeButton({
+  from,
+  to,
+  count,
+  disabled,
+}: {
+  from: Date
+  to: Date
+  count: number
+  disabled?: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const [confirmText, setConfirmText] = useState('')
+  const purge = usePurgeTransactions()
+  const toast = useToast()
+
+  async function handleConfirm() {
+    try {
+      const deleted = await purge.mutateAsync({ from, to })
+      toast.success(
+        deleted === 0
+          ? 'Aucune transaction à supprimer sur cette période.'
+          : `${deleted} transaction${deleted > 1 ? 's' : ''} supprimée${deleted > 1 ? 's' : ''}.`
+      )
+      setOpen(false)
+      setConfirmText('')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erreur lors de la purge')
+    }
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        disabled={disabled || count === 0}
+        className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-700 border border-red-200 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        title={count === 0 ? 'Aucune transaction sur cette période' : 'Supprimer les transactions de la période'}
+      >
+        <Trash2 className="h-4 w-4" />
+        Purger
+      </button>
+
+      {open && (
+        <Modal
+          open
+          onClose={() => {
+            setOpen(false)
+            setConfirmText('')
+          }}
+          title="Purger les transactions"
+          footer={
+            <>
+              <button
+                onClick={() => {
+                  setOpen(false)
+                  setConfirmText('')
+                }}
+                className="btn-secondary"
+                disabled={purge.isPending}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleConfirm}
+                disabled={purge.isPending || confirmText !== 'PURGER'}
+                className="btn-danger"
+              >
+                <Trash2 className="h-4 w-4" />
+                {purge.isPending ? 'Suppression…' : `Supprimer ${count} transaction${count > 1 ? 's' : ''}`}
+              </button>
+            </>
+          }
+        >
+          <div className="space-y-4 text-sm">
+            <div className="flex items-start gap-3 rounded-lg bg-amber-50 border border-amber-200 p-3 text-amber-900">
+              <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
+              <div>
+                <div className="font-semibold">Action irréversible</div>
+                <p className="mt-1">
+                  Tu vas supprimer définitivement <strong>{count}</strong> transaction
+                  {count > 1 ? 's' : ''} entre le <strong>{formatDate(from.toISOString())}</strong>{' '}
+                  et le <strong>{formatDate(to.toISOString())}</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="text-slate-600 space-y-2">
+              <p>
+                Pense à <strong>exporter le PDF</strong> de cette période avant la purge si tu veux
+                garder une trace.
+              </p>
+              <p className="text-xs text-slate-500">
+                Note : l'espace disque est récupéré progressivement par PostgreSQL après la
+                suppression. Le pourcentage de la base peut mettre quelques minutes à diminuer.
+              </p>
+            </div>
+
+            <div>
+              <label className="label">
+                Pour confirmer, tape <code className="text-red-700 font-mono">PURGER</code>{' '}
+                ci-dessous :
+              </label>
+              <input
+                className="input"
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                placeholder="PURGER"
+                autoFocus
+              />
+            </div>
+          </div>
+        </Modal>
+      )}
+    </>
   )
 }
 
