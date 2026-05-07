@@ -498,7 +498,13 @@ function TopProducts({ byProduct }: { byProduct: ProductBreakdown[] }) {
       }
     }
 
-    const arr = [...map.values()]
+    // En mode "Plus vendus", on n'affiche que ceux qui ont au moins 1 vente.
+    // En mode "Moins vendus", on garde tout (y compris les articles à 0 vente)
+    // pour identifier ce qui ne se vend pas.
+    const arr =
+      mode === 'top'
+        ? [...map.values()].filter((x) => x.qty > 0)
+        : [...map.values()]
     arr.sort((a, b) => (mode === 'top' ? b.qty - a.qty : a.qty - b.qty))
     return arr.slice(0, 10)
   }, [byProduct, products, productById, mode])
