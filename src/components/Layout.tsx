@@ -27,9 +27,9 @@ export function Layout() {
               <Flame className="h-5 w-5" strokeWidth={2.5} />
             </div>
             <div className="leading-tight">
-              <div className="font-bold text-lg tracking-tight">Coop Nico</div>
+              <div className="font-bold text-lg tracking-tight">Coopérative CHG</div>
               <div className="text-[11px] uppercase tracking-[0.18em] text-white/70">
-                Caisse de la caserne
+                Caserne de Château-Gombert
               </div>
             </div>
           </Link>

@@ -37,16 +37,18 @@ export function generateSalesPdf(input: SalesReportInput) {
   const toStr = input.to.toLocaleDateString('fr-FR')
 
   doc.setFontSize(18)
-  doc.text('Coop Nico — Rapport de ventes', 14, 18)
+  doc.text('Coopérative CHG — Rapport de ventes', 14, 18)
+  doc.setFontSize(10)
+  doc.setTextColor(120)
+  doc.text('Caserne de Château-Gombert', 14, 24)
   doc.setFontSize(11)
-  doc.setTextColor(100)
-  doc.text(`Période : ${fromStr} → ${toStr}`, 14, 26)
+  doc.text(`Période : ${fromStr} → ${toStr}`, 14, 31)
   doc.setTextColor(0)
 
   const ticketAvg = input.txCount > 0 ? input.clientTotal / input.txCount : 0
 
   autoTable(doc, {
-    startY: 32,
+    startY: 37,
     theme: 'plain',
     styles: { fontSize: 11, cellPadding: 1.5 },
     body: [
@@ -122,6 +124,6 @@ export function generateSalesPdf(input: SalesReportInput) {
     columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' } },
   })
 
-  const filename = `coop-nico-ventes_${fromStr.replaceAll('/', '-')}_${toStr.replaceAll('/', '-')}.pdf`
+  const filename = `cooperative-chg-ventes_${fromStr.replaceAll('/', '-')}_${toStr.replaceAll('/', '-')}.pdf`
   doc.save(filename)
 }

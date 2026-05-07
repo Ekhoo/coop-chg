@@ -40,8 +40,8 @@ export function Login() {
           <div className="rounded-full bg-brand-100 p-3 mb-3">
             <Flame className="h-8 w-8 text-brand-600" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Coop Nico</h1>
-          <p className="text-sm text-slate-500">Snack de la caserne</p>
+          <h1 className="text-2xl font-bold text-slate-900">Coopérative CHG</h1>
+          <p className="text-sm text-slate-500">Caserne de Château-Gombert</p>
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
