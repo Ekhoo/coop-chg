@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   Image as ImageIcon,
   Trophy,
+  ArrowRight,
 } from 'lucide-react'
 import {
   startOfMonth,
@@ -229,27 +230,13 @@ export function SalesPage() {
         </div>
       </div>
 
-      <div className="card p-4 flex flex-wrap items-end gap-3">
-        <div>
-          <label className="label">Du</label>
-          <input
-            type="date"
-            className="input"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            max={to}
-          />
-        </div>
-        <div>
-          <label className="label">Au</label>
-          <input
-            type="date"
-            className="input"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            min={from}
-          />
-        </div>
+      <div className="card p-4 flex flex-wrap items-center gap-3">
+        <RangeDateInput
+          fromValue={from}
+          toValue={to}
+          onFromChange={setFrom}
+          onToChange={setTo}
+        />
         <DatePresets
           globalRange={globalRange}
           onPick={(f, t) => {
@@ -729,6 +716,52 @@ function PurgeButton({
   )
 }
 
+function RangeDateInput({
+  fromValue,
+  toValue,
+  onFromChange,
+  onToChange,
+}: {
+  fromValue: string
+  toValue: string
+  onFromChange: (v: string) => void
+  onToChange: (v: string) => void
+}) {
+  return (
+    <div className="inline-flex flex-wrap items-center gap-2">
+      <DatePill label="Du" value={fromValue} onChange={onFromChange} max={toValue} />
+      <ArrowRight className="h-4 w-4 text-slate-400" />
+      <DatePill label="Au" value={toValue} onChange={onToChange} min={fromValue} />
+    </div>
+  )
+}
+
+function DatePill({
+  label,
+  value,
+  onChange,
+  ...rest
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+} & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'>) {
+  return (
+    <div className="inline-flex items-center rounded-full border border-slate-200 bg-white shadow-sm transition-all hover:border-slate-300 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20">
+      <span className="pl-3 pr-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+        {label}
+      </span>
+      <input
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="appearance-none border-0 bg-transparent pl-0 pr-3 py-1.5 text-sm font-medium text-slate-900 focus:outline-none focus:ring-0"
+        {...rest}
+      />
+    </div>
+  )
+}
+
 function DatePresets({
   onPick,
   globalRange,
@@ -761,15 +794,15 @@ function DatePresets({
   }
 
   return (
-    <div className="flex gap-1 ml-auto flex-wrap">
+    <div className="flex gap-1.5 ml-auto flex-wrap">
       {presets.map((p) => (
         <button
           key={p.label}
           type="button"
-          className="btn-secondary text-xs"
           onClick={() =>
             onPick(format(p.from, 'yyyy-MM-dd'), format(p.to, 'yyyy-MM-dd'))
           }
+          className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-95"
         >
           {p.label}
         </button>
