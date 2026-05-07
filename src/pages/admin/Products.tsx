@@ -424,7 +424,7 @@ function ProductFormModal({
               placeholder="1,00"
               required
             />
-            <p className="text-[11px] text-slate-500 mt-1">Ce que la caserne paye.</p>
+            <p className="text-[11px] text-slate-500 mt-1">Ce que le foyer paye.</p>
           </div>
           <div>
             <label className="label">Prix de vente (€)</label>
@@ -436,7 +436,7 @@ function ProductFormModal({
               placeholder="1,50"
               required
             />
-            <p className="text-[11px] text-slate-500 mt-1">Revient à la caserne.</p>
+            <p className="text-[11px] text-slate-500 mt-1">Revient au foyer.</p>
           </div>
           <div>
             <label className="label">Commission (€)</label>
@@ -458,7 +458,7 @@ function ProductFormModal({
             <span className="font-bold text-brand-700">{formatPrice(clientCentsPreview)}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-slate-600">Marge caserne (vente − achat)</span>
+            <span className="text-slate-600">Marge foyer (vente − achat)</span>
             <span
               className={`font-medium ${
                 marginCentsPreview < 0 ? 'text-red-600' : 'text-emerald-700'

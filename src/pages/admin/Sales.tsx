@@ -7,7 +7,6 @@ import {
   Building2,
   Sparkles,
   ShoppingBag,
-  TrendingUp,
   Receipt,
   Trash2,
   AlertTriangle,
@@ -49,7 +48,7 @@ interface ProductBreakdown {
   portion_grams: number | null
   qty: number
   client_cents: number
-  caserne_cents: number
+  foyer_cents: number
   commission_cents: number
   cost_cents: number
   margin_cents: number
@@ -111,7 +110,7 @@ export function SalesPage() {
   const stats = useMemo(() => {
     const txs = data ?? []
     let clientTotal = 0
-    let caserneTotal = 0
+    let foyerTotal = 0
     let commissionTotal = 0
     let costTotal = 0
     const txCount = txs.length
@@ -131,12 +130,12 @@ export function SalesPage() {
 
       for (const it of t.items) {
         const lineClient = (it.unit_sale_cents + it.unit_commission_cents) * it.qty
-        const lineCaserne = it.unit_sale_cents * it.qty
+        const lineFoyer = it.unit_sale_cents * it.qty
         const lineCommission = it.unit_commission_cents * it.qty
         const lineCost = it.unit_cost_cents * it.qty
 
         clientTotal += lineClient
-        caserneTotal += lineCaserne
+        foyerTotal += lineFoyer
         commissionTotal += lineCommission
         costTotal += lineCost
         sellerEntry.qty += it.qty
@@ -149,7 +148,7 @@ export function SalesPage() {
             portion_grams: it.unit_portion_grams,
             qty: 0,
             client_cents: 0,
-            caserne_cents: 0,
+            foyer_cents: 0,
             commission_cents: 0,
             cost_cents: 0,
             margin_cents: 0,
@@ -164,10 +163,10 @@ export function SalesPage() {
         }
         entry.qty += it.qty
         entry.client_cents += lineClient
-        entry.caserne_cents += lineCaserne
+        entry.foyer_cents += lineFoyer
         entry.commission_cents += lineCommission
         entry.cost_cents += lineCost
-        entry.margin_cents += lineCaserne - lineCost
+        entry.margin_cents += lineFoyer - lineCost
         byProductMap.set(it.product_name, entry)
       }
       bySellerMap.set(t.seller_id, sellerEntry)
@@ -176,10 +175,9 @@ export function SalesPage() {
     const bySeller = [...bySellerMap.values()].sort((a, b) => b.client_cents - a.client_cents)
     return {
       clientTotal,
-      caserneTotal,
       commissionTotal,
       costTotal,
-      caserneMargin: caserneTotal - costTotal,
+      foyerMargin: foyerTotal - costTotal,
       txCount,
       byProduct,
       bySeller,
@@ -193,10 +191,9 @@ export function SalesPage() {
       from: fromDate,
       to: toDate,
       clientTotal: stats.clientTotal,
-      caserneTotal: stats.caserneTotal,
       commissionTotal: stats.commissionTotal,
       costTotal: stats.costTotal,
-      caserneMargin: stats.caserneMargin,
+      foyerMargin: stats.foyerMargin,
       txCount: stats.txCount,
       byProduct: stats.byProduct,
       bySeller: stats.bySeller,
@@ -262,7 +259,7 @@ export function SalesPage() {
         periodTo={toDate}
       />
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <Kpi
           label="Total client"
           value={formatPrice(stats.clientTotal)}
@@ -270,10 +267,10 @@ export function SalesPage() {
           color="brand"
         />
         <Kpi
-          label="Part caserne"
-          value={formatPrice(stats.caserneTotal)}
+          label="Foyer"
+          value={formatPrice(stats.foyerMargin)}
           icon={<Building2 className="h-5 w-5" />}
-          color="sky"
+          color={stats.foyerMargin >= 0 ? 'sky' : 'rose'}
         />
         <Kpi
           label="Caisse noire"
@@ -286,12 +283,6 @@ export function SalesPage() {
           value={formatPrice(stats.costTotal)}
           icon={<ShoppingBag className="h-5 w-5" />}
           color="slate"
-        />
-        <Kpi
-          label="Marge caserne"
-          value={formatPrice(stats.caserneMargin)}
-          icon={<TrendingUp className="h-5 w-5" />}
-          color={stats.caserneMargin >= 0 ? 'emerald' : 'rose'}
         />
         <Kpi
           label="Transactions"
@@ -316,10 +307,9 @@ export function SalesPage() {
                 <th className="text-left px-3 py-2">Article</th>
                 <th className="text-right px-3 py-2">Qté</th>
                 <th className="text-right px-3 py-2">Client</th>
-                <th className="text-right px-3 py-2">Caserne</th>
+                <th className="text-right px-3 py-2">Foyer</th>
                 <th className="text-right px-3 py-2">Caisse noire</th>
                 <th className="text-right px-3 py-2">Coût</th>
-                <th className="text-right px-3 py-2">Marge</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -339,19 +329,18 @@ export function SalesPage() {
                     )}
                   </td>
                   <td className="px-3 py-2 text-right font-medium">{formatPrice(r.client_cents)}</td>
-                  <td className="px-3 py-2 text-right">{formatPrice(r.caserne_cents)}</td>
+                  <td
+                    className={`px-3 py-2 text-right font-medium ${
+                      r.margin_cents < 0 ? 'text-red-600' : ''
+                    }`}
+                  >
+                    {formatPrice(r.margin_cents)}
+                  </td>
                   <td className="px-3 py-2 text-right text-purple-700">
                     {formatPrice(r.commission_cents)}
                   </td>
                   <td className="px-3 py-2 text-right text-slate-500">
                     {formatPrice(r.cost_cents)}
-                  </td>
-                  <td
-                    className={`px-3 py-2 text-right font-medium ${
-                      r.margin_cents < 0 ? 'text-red-600' : 'text-emerald-700'
-                    }`}
-                  >
-                    {formatPrice(r.margin_cents)}
                   </td>
                 </tr>
               ))}

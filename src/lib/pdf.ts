@@ -7,10 +7,9 @@ export interface SalesReportInput {
   from: Date
   to: Date
   clientTotal: number
-  caserneTotal: number
   commissionTotal: number
   costTotal: number
-  caserneMargin: number
+  foyerMargin: number
   txCount: number
   byProduct: {
     product_name: string
@@ -18,7 +17,7 @@ export interface SalesReportInput {
     portion_grams: number | null
     qty: number
     client_cents: number
-    caserne_cents: number
+    foyer_cents: number
     commission_cents: number
     cost_cents: number
     margin_cents: number
@@ -68,10 +67,9 @@ export function generateSalesPdf(input: SalesReportInput) {
     styles: { fontSize: 11, cellPadding: 1.5 },
     body: [
       ['Total payé par les clients', formatPrice(input.clientTotal)],
-      ['    · Part caserne', formatPrice(input.caserneTotal)],
+      ['    · Foyer (vente - achat)', formatPrice(input.foyerMargin)],
       ['    · Caisse noire (pompiers)', formatPrice(input.commissionTotal)],
       ["Coût d'achat des articles vendus", formatPrice(input.costTotal)],
-      ['Marge caserne (vente - achat)', formatPrice(input.caserneMargin)],
       ['Nombre de transactions', String(input.txCount)],
       ['Ticket moyen', formatPrice(Math.round(ticketAvg))],
     ],
@@ -96,10 +94,9 @@ export function generateSalesPdf(input: SalesReportInput) {
         'Article',
         { content: 'Qté', styles: RIGHT },
         { content: 'Client', styles: RIGHT },
-        { content: 'Caserne', styles: RIGHT },
+        { content: 'Foyer', styles: RIGHT },
         { content: 'Caisse noire', styles: RIGHT },
         { content: 'Coût', styles: RIGHT },
-        { content: 'Marge', styles: RIGHT },
       ],
     ],
     body: input.byProduct.map((r) => [
@@ -108,21 +105,19 @@ export function generateSalesPdf(input: SalesReportInput) {
         ? `${r.qty} portions (${formatGrams(r.portion_grams * r.qty)})`
         : String(r.qty),
       formatPrice(r.client_cents),
-      formatPrice(r.caserne_cents),
+      formatPrice(r.margin_cents),
       formatPrice(r.commission_cents),
       formatPrice(r.cost_cents),
-      formatPrice(r.margin_cents),
     ]),
     headStyles: { fillColor: HEADER_FILL, textColor: 255, fontStyle: 'bold' },
     styles: { fontSize: 10, cellPadding: 2 },
     columnStyles: {
       0: { cellWidth: 'auto' },
       1: { halign: 'right', cellWidth: 32 },
-      2: { halign: 'right', cellWidth: 26 },
-      3: { halign: 'right', cellWidth: 26 },
-      4: { halign: 'right', cellWidth: 26 },
-      5: { halign: 'right', cellWidth: 26 },
-      6: { halign: 'right', cellWidth: 26 },
+      2: { halign: 'right', cellWidth: 28 },
+      3: { halign: 'right', cellWidth: 28 },
+      4: { halign: 'right', cellWidth: 28 },
+      5: { halign: 'right', cellWidth: 28 },
     },
   })
 
