@@ -11,14 +11,17 @@ import {
   Receipt,
   Trash2,
   AlertTriangle,
+  Image as ImageIcon,
+  Trophy,
 } from 'lucide-react'
 import { startOfMonth, endOfMonth, startOfDay, endOfDay, format } from 'date-fns'
-import { supabase } from '@/lib/supabase'
+import { supabase, publicImageUrl } from '@/lib/supabase'
 import { formatPrice, formatDateTime, formatDate } from '@/lib/format'
 import { DbHealth } from '@/components/DbHealth'
 import { Modal } from '@/components/Modal'
 import { useToast } from '@/components/Toast'
 import { usePurgeTransactions } from '@/hooks/useDbStats'
+import { useProducts } from '@/hooks/useProducts'
 import type { Profile, Transaction, TransactionItem } from '@/lib/database.types'
 
 interface TxWithDetails extends Transaction {
@@ -27,6 +30,7 @@ interface TxWithDetails extends Transaction {
 }
 
 interface ProductBreakdown {
+  product_id: string | null
   product_name: string
   qty: number
   client_cents: number
@@ -125,6 +129,7 @@ export function SalesPage() {
         const entry =
           byProductMap.get(it.product_name) ??
           ({
+            product_id: it.product_id,
             product_name: it.product_name,
             qty: 0,
             client_cents: 0,
@@ -133,6 +138,10 @@ export function SalesPage() {
             cost_cents: 0,
             margin_cents: 0,
           } satisfies ProductBreakdown)
+        // garde le 1er product_id non null vu (utile si certaines lignes ont un id null)
+        if (entry.product_id === null && it.product_id !== null) {
+          entry.product_id = it.product_id
+        }
         entry.qty += it.qty
         entry.client_cents += lineClient
         entry.caserne_cents += lineCaserne
@@ -268,6 +277,8 @@ export function SalesPage() {
           color="amber"
         />
       </div>
+
+      <TopProducts byProduct={stats.byProduct} />
 
       <div className="card overflow-x-auto">
         <div className="px-4 py-2 border-b border-slate-200 font-semibold text-sm">
@@ -422,6 +433,155 @@ function Kpi({
         {subtitle && <div className="text-[11px] text-slate-400 mt-0.5">{subtitle}</div>}
       </div>
     </div>
+  )
+}
+
+function TopProducts({ byProduct }: { byProduct: ProductBreakdown[] }) {
+  const [mode, setMode] = useState<'top' | 'least'>('top')
+  const { data: products = [] } = useProducts({ includeArchived: true })
+
+  const productById = useMemo(
+    () => Object.fromEntries(products.map((p) => [p.id, p])),
+    [products]
+  )
+
+  // On combine les ventes de la période avec tous les articles actifs
+  // (qty=0 pour ceux qui n'ont rien vendu) afin que "moins vendus" remonte
+  // bien les articles qui n'ont pas bougé sur la période.
+  const ranking = useMemo(() => {
+    const map = new Map<
+      string,
+      { product_id: string | null; product_name: string; image_path: string | null; qty: number; client_cents: number }
+    >()
+
+    for (const p of products) {
+      if (p.archived) continue
+      map.set(p.id, {
+        product_id: p.id,
+        product_name: p.name,
+        image_path: p.image_path,
+        qty: 0,
+        client_cents: 0,
+      })
+    }
+
+    for (const sale of byProduct) {
+      const key = sale.product_id ?? `name:${sale.product_name}`
+      const existing = map.get(key)
+      if (existing) {
+        existing.qty = sale.qty
+        existing.client_cents = sale.client_cents
+      } else {
+        // produit archivé / supprimé qui a quand même des ventes sur la période
+        map.set(key, {
+          product_id: sale.product_id,
+          product_name: sale.product_name,
+          image_path: sale.product_id
+            ? (productById[sale.product_id]?.image_path ?? null)
+            : null,
+          qty: sale.qty,
+          client_cents: sale.client_cents,
+        })
+      }
+    }
+
+    const arr = [...map.values()]
+    arr.sort((a, b) => (mode === 'top' ? b.qty - a.qty : a.qty - b.qty))
+    return arr.slice(0, 10)
+  }, [byProduct, products, productById, mode])
+
+  return (
+    <section className="card p-4 space-y-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+          <Trophy className="h-5 w-5 text-amber-500" />
+          Top 10 articles
+        </h2>
+        <div className="inline-flex rounded-full bg-slate-100 p-0.5">
+          <ModeButton active={mode === 'top'} onClick={() => setMode('top')}>
+            Plus vendus
+          </ModeButton>
+          <ModeButton active={mode === 'least'} onClick={() => setMode('least')}>
+            Moins vendus
+          </ModeButton>
+        </div>
+      </div>
+
+      {ranking.length === 0 ? (
+        <div className="p-6 text-center text-sm text-slate-500">
+          Aucun article à afficher.
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+          {ranking.map((item, idx) => {
+            const imageUrl = publicImageUrl(item.image_path)
+            const rankColor =
+              mode === 'top' && idx === 0
+                ? 'bg-amber-400 text-amber-900'
+                : mode === 'top' && idx === 1
+                  ? 'bg-slate-300 text-slate-700'
+                  : mode === 'top' && idx === 2
+                    ? 'bg-orange-300 text-orange-900'
+                    : 'bg-white/95 text-slate-700 ring-1 ring-slate-200'
+            return (
+              <div
+                key={item.product_id ?? item.product_name}
+                className="card overflow-hidden flex flex-col"
+              >
+                <div className="relative aspect-square bg-slate-100 flex items-center justify-center overflow-hidden">
+                  {imageUrl ? (
+                    <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <ImageIcon className="h-6 w-6 text-slate-300" />
+                  )}
+                  <div
+                    className={`absolute top-1 left-1 rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold ${rankColor}`}
+                  >
+                    {idx + 1}
+                  </div>
+                </div>
+                <div className="p-1.5 flex flex-col gap-0.5">
+                  <div className="text-xs font-medium leading-tight line-clamp-2 text-slate-900">
+                    {item.product_name}
+                  </div>
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="text-slate-500 tabular-nums">
+                      {item.qty} {item.qty > 1 ? 'vendus' : 'vendu'}
+                    </span>
+                    <span className="font-semibold text-brand-700 tabular-nums">
+                      {formatPrice(item.client_cents)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function ModeButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1 text-xs font-medium rounded-full transition-all ${
+        active
+          ? 'bg-white text-slate-900 shadow-sm'
+          : 'text-slate-600 hover:text-slate-900'
+      }`}
+    >
+      {children}
+    </button>
   )
 }
 
