@@ -30,25 +30,37 @@ export interface SalesReportInput {
 }
 
 const HEADER_FILL: [number, number, number] = [220, 38, 38]
+const RIGHT = { halign: 'right' as const }
+
+function getFinalY(doc: jsPDF): number {
+  return (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY
+}
 
 export function generateSalesPdf(input: SalesReportInput) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
   const fromStr = input.from.toLocaleDateString('fr-FR')
   const toStr = input.to.toLocaleDateString('fr-FR')
 
+  // ============ Header ============
   doc.setFontSize(18)
+  doc.setTextColor(15, 23, 42)
   doc.text('Coopérative CHG — Rapport de ventes', 14, 18)
+
   doc.setFontSize(10)
-  doc.setTextColor(120)
-  doc.text('Caserne de Château-Gombert', 14, 24)
+  doc.setTextColor(120, 120, 120)
+  doc.text('Caserne de Château-Gombert', 14, 25)
+
   doc.setFontSize(11)
-  doc.text(`Période : ${fromStr} → ${toStr}`, 14, 31)
+  doc.setTextColor(60, 60, 60)
+  doc.text(`Période : ${fromStr} → ${toStr}`, 14, 33)
+
   doc.setTextColor(0)
 
   const ticketAvg = input.txCount > 0 ? input.clientTotal / input.txCount : 0
 
+  // ============ Récap (table sans bordures) ============
   autoTable(doc, {
-    startY: 37,
+    startY: 40,
     theme: 'plain',
     styles: { fontSize: 11, cellPadding: 1.5 },
     body: [
@@ -60,16 +72,33 @@ export function generateSalesPdf(input: SalesReportInput) {
       ['Nombre de transactions', String(input.txCount)],
       ['Ticket moyen', formatPrice(Math.round(ticketAvg))],
     ],
-    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 80 } },
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 105 },
+      1: { halign: 'right', cellWidth: 50 },
+    },
   })
 
-  let y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8
+  let y = getFinalY(doc) + 10
 
+  // ============ Ventilation par article ============
   doc.setFontSize(13)
+  doc.setTextColor(15, 23, 42)
   doc.text('Ventilation par article', 14, y)
+  doc.setTextColor(0)
+
   autoTable(doc, {
     startY: y + 3,
-    head: [['Article', 'Qté', 'Client', 'Caserne', 'Caisse noire', 'Coût', 'Marge']],
+    head: [
+      [
+        'Article',
+        { content: 'Qté', styles: RIGHT },
+        { content: 'Client', styles: RIGHT },
+        { content: 'Caserne', styles: RIGHT },
+        { content: 'Caisse noire', styles: RIGHT },
+        { content: 'Coût', styles: RIGHT },
+        { content: 'Marge', styles: RIGHT },
+      ],
+    ],
     body: input.byProduct.map((r) => [
       r.product_name,
       String(r.qty),
@@ -79,49 +108,83 @@ export function generateSalesPdf(input: SalesReportInput) {
       formatPrice(r.cost_cents),
       formatPrice(r.margin_cents),
     ]),
-    headStyles: { fillColor: HEADER_FILL },
+    headStyles: { fillColor: HEADER_FILL, textColor: 255, fontStyle: 'bold' },
+    styles: { fontSize: 10, cellPadding: 2 },
     columnStyles: {
-      1: { halign: 'right' },
-      2: { halign: 'right' },
-      3: { halign: 'right' },
-      4: { halign: 'right' },
-      5: { halign: 'right' },
-      6: { halign: 'right' },
+      0: { cellWidth: 'auto' },
+      1: { halign: 'right', cellWidth: 18 },
+      2: { halign: 'right', cellWidth: 28 },
+      3: { halign: 'right', cellWidth: 28 },
+      4: { halign: 'right', cellWidth: 28 },
+      5: { halign: 'right', cellWidth: 28 },
+      6: { halign: 'right', cellWidth: 28 },
     },
   })
 
-  y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8
+  y = getFinalY(doc) + 10
 
+  // ============ Par vendeur ============
   if (input.bySeller.length > 0) {
     doc.setFontSize(13)
+    doc.setTextColor(15, 23, 42)
     doc.text('Par vendeur', 14, y)
+    doc.setTextColor(0)
+
     autoTable(doc, {
       startY: y + 3,
-      head: [['Vendeur', 'Articles vendus', 'Total client']],
+      head: [
+        [
+          'Vendeur',
+          { content: 'Articles vendus', styles: RIGHT },
+          { content: 'Total client', styles: RIGHT },
+        ],
+      ],
       body: input.bySeller.map((r) => [
         r.seller_name,
         String(r.qty),
         formatPrice(r.client_cents),
       ]),
-      headStyles: { fillColor: HEADER_FILL },
-      columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } },
+      headStyles: { fillColor: HEADER_FILL, textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 10, cellPadding: 2 },
+      columnStyles: {
+        0: { cellWidth: 'auto' },
+        1: { halign: 'right', cellWidth: 40 },
+        2: { halign: 'right', cellWidth: 40 },
+      },
     })
-    y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8
+    y = getFinalY(doc) + 10
   }
 
+  // ============ Transactions ============
   doc.setFontSize(13)
+  doc.setTextColor(15, 23, 42)
   doc.text('Transactions', 14, y)
+  doc.setTextColor(0)
+
   autoTable(doc, {
     startY: y + 3,
-    head: [['Date', 'Vendeur', 'Articles', 'Total']],
+    head: [
+      [
+        'Date',
+        'Vendeur',
+        { content: 'Articles', styles: RIGHT },
+        { content: 'Total', styles: RIGHT },
+      ],
+    ],
     body: input.transactions.map((t) => [
       formatDateTime(t.created_at),
       t.seller_name,
       String(t.items_count),
       formatPrice(t.total_cents),
     ]),
-    headStyles: { fillColor: HEADER_FILL },
-    columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' } },
+    headStyles: { fillColor: HEADER_FILL, textColor: 255, fontStyle: 'bold' },
+    styles: { fontSize: 10, cellPadding: 2 },
+    columnStyles: {
+      0: { cellWidth: 35 },
+      1: { cellWidth: 'auto' },
+      2: { halign: 'right', cellWidth: 25 },
+      3: { halign: 'right', cellWidth: 28 },
+    },
   })
 
   const filename = `cooperative-chg-ventes_${fromStr.replaceAll('/', '-')}_${toStr.replaceAll('/', '-')}.pdf`

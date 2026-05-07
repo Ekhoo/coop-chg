@@ -7,7 +7,16 @@ import {
 } from '@/hooks/useDbStats'
 import { formatDate } from '@/lib/format'
 
-export function DbHealth() {
+interface DbHealthProps {
+  /** Nombre de transactions sur la plage sélectionnée. */
+  txCountInPeriod: number
+  /** Début de la plage sélectionnée. */
+  periodFrom: Date
+  /** Fin de la plage sélectionnée. */
+  periodTo: Date
+}
+
+export function DbHealth({ txCountInPeriod, periodFrom, periodTo }: DbHealthProps) {
   const { data, isLoading, error } = useDbStats()
 
   if (isLoading) {
@@ -62,26 +71,20 @@ export function DbHealth() {
 
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-slate-500 pt-2 border-t border-slate-100">
         <span>
-          <strong className="text-slate-700">{data.transactions_count.toLocaleString('fr-FR')}</strong>{' '}
-          transactions
-        </span>
-        <span>
           <strong className="text-slate-700">
-            {data.transaction_items_count.toLocaleString('fr-FR')}
+            {txCountInPeriod.toLocaleString('fr-FR')}
           </strong>{' '}
-          lignes vendues
+          transaction{txCountInPeriod > 1 ? 's' : ''} sur la période
         </span>
         <span>
           <strong className="text-slate-700">{data.products_count}</strong> articles
         </span>
-        {data.oldest_transaction && data.newest_transaction && (
-          <span>
-            Période :{' '}
-            <strong className="text-slate-700">
-              {formatDate(data.oldest_transaction)} → {formatDate(data.newest_transaction)}
-            </strong>
-          </span>
-        )}
+        <span>
+          Période :{' '}
+          <strong className="text-slate-700">
+            {formatDate(periodFrom.toISOString())} → {formatDate(periodTo.toISOString())}
+          </strong>
+        </span>
       </div>
     </div>
   )

@@ -29,7 +29,7 @@ import { formatPrice, formatDateTime, formatDate } from '@/lib/format'
 import { DbHealth } from '@/components/DbHealth'
 import { Modal } from '@/components/Modal'
 import { useToast } from '@/components/Toast'
-import { usePurgeTransactions } from '@/hooks/useDbStats'
+import { useDbStats, usePurgeTransactions } from '@/hooks/useDbStats'
 import { useProducts } from '@/hooks/useProducts'
 import type { Profile, Transaction, TransactionItem } from '@/lib/database.types'
 
@@ -200,6 +200,16 @@ export function SalesPage() {
 
   const ticketAvg = stats.txCount > 0 ? stats.clientTotal / stats.txCount : 0
 
+  // Plage globale (1ère et dernière transaction de la base) pour le bouton "Toute la période"
+  const { data: dbStats } = useDbStats()
+  const globalRange = useMemo(() => {
+    if (!dbStats?.oldest_transaction || !dbStats?.newest_transaction) return null
+    return {
+      from: new Date(dbStats.oldest_transaction),
+      to: new Date(dbStats.newest_transaction),
+    }
+  }, [dbStats])
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -220,8 +230,6 @@ export function SalesPage() {
           </button>
         </div>
       </div>
-
-      <DbHealth />
 
       <div className="card p-4 flex flex-wrap items-end gap-3">
         <div>
@@ -244,8 +252,20 @@ export function SalesPage() {
             min={from}
           />
         </div>
-        <DatePresets onPick={(f, t) => { setFrom(f); setTo(t) }} />
+        <DatePresets
+          globalRange={globalRange}
+          onPick={(f, t) => {
+            setFrom(f)
+            setTo(t)
+          }}
+        />
       </div>
+
+      <DbHealth
+        txCountInPeriod={stats.txCount}
+        periodFrom={fromDate}
+        periodTo={toDate}
+      />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <Kpi
@@ -287,7 +307,7 @@ export function SalesPage() {
         />
       </div>
 
-      <TopProducts byProduct={stats.byProduct} />
+      {stats.txCount > 0 && <TopProducts byProduct={stats.byProduct} />}
 
       <div className="card overflow-x-auto">
         <div className="px-4 py-2 border-b border-slate-200 font-semibold text-sm">
@@ -712,7 +732,13 @@ function PurgeButton({
   )
 }
 
-function DatePresets({ onPick }: { onPick: (from: string, to: string) => void }) {
+function DatePresets({
+  onPick,
+  globalRange,
+}: {
+  onPick: (from: string, to: string) => void
+  globalRange?: { from: Date; to: Date } | null
+}) {
   const today = new Date()
   const yesterday = subDays(today, 1)
   // Semaine française : commence le lundi
@@ -728,6 +754,14 @@ function DatePresets({ onPick }: { onPick: (from: string, to: string) => void })
     },
     { label: 'Ce mois', from: startOfMonth(today), to: endOfMonth(today) },
   ]
+
+  if (globalRange) {
+    presets.push({
+      label: 'Toute la période',
+      from: globalRange.from,
+      to: globalRange.to,
+    })
+  }
 
   return (
     <div className="flex gap-1 ml-auto flex-wrap">
