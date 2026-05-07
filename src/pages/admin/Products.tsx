@@ -260,9 +260,7 @@ function ProductFormModal({
 
   const saleCentsPreview = parsePriceToCents(saleText) ?? 0
   const commissionCentsPreview = parsePriceToCents(commissionText) ?? 0
-  const costCentsPreview = parsePriceToCents(costText) ?? 0
   const clientCentsPreview = saleCentsPreview + commissionCentsPreview
-  const marginCentsPreview = saleCentsPreview - costCentsPreview
 
   async function handleUpload(file: File) {
     setUploading(true)
@@ -452,20 +450,10 @@ function ProductFormModal({
           </div>
         </div>
 
-        <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm space-y-1">
+        <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm">
           <div className="flex items-center justify-between">
             <span className="text-slate-600">Prix client (vente + commission)</span>
             <span className="font-bold text-brand-700">{formatPrice(clientCentsPreview)}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-slate-600">Marge foyer (vente − achat)</span>
-            <span
-              className={`font-medium ${
-                marginCentsPreview < 0 ? 'text-red-600' : 'text-emerald-700'
-              }`}
-            >
-              {formatPrice(marginCentsPreview)}
-            </span>
           </div>
         </div>
 
