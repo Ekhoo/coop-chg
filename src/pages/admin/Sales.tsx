@@ -51,7 +51,6 @@ interface ProductBreakdown {
   foyer_cents: number
   commission_cents: number
   cost_cents: number
-  margin_cents: number
 }
 
 export function SalesPage() {
@@ -151,7 +150,6 @@ export function SalesPage() {
             foyer_cents: 0,
             commission_cents: 0,
             cost_cents: 0,
-            margin_cents: 0,
           } satisfies ProductBreakdown)
         // garde le 1er product_id non null vu (utile si certaines lignes ont un id null)
         if (entry.product_id === null && it.product_id !== null) {
@@ -166,7 +164,6 @@ export function SalesPage() {
         entry.foyer_cents += lineFoyer
         entry.commission_cents += lineCommission
         entry.cost_cents += lineCost
-        entry.margin_cents += lineFoyer - lineCost
         byProductMap.set(it.product_name, entry)
       }
       bySellerMap.set(t.seller_id, sellerEntry)
@@ -175,9 +172,9 @@ export function SalesPage() {
     const bySeller = [...bySellerMap.values()].sort((a, b) => b.client_cents - a.client_cents)
     return {
       clientTotal,
+      foyerTotal,
       commissionTotal,
       costTotal,
-      foyerMargin: foyerTotal - costTotal,
       txCount,
       byProduct,
       bySeller,
@@ -191,9 +188,9 @@ export function SalesPage() {
       from: fromDate,
       to: toDate,
       clientTotal: stats.clientTotal,
+      foyerTotal: stats.foyerTotal,
       commissionTotal: stats.commissionTotal,
       costTotal: stats.costTotal,
-      foyerMargin: stats.foyerMargin,
       txCount: stats.txCount,
       byProduct: stats.byProduct,
       bySeller: stats.bySeller,
@@ -268,9 +265,9 @@ export function SalesPage() {
         />
         <Kpi
           label="Foyer"
-          value={formatPrice(stats.foyerMargin)}
+          value={formatPrice(stats.foyerTotal)}
           icon={<Building2 className="h-5 w-5" />}
-          color={stats.foyerMargin >= 0 ? 'sky' : 'rose'}
+          color="sky"
         />
         <Kpi
           label="Caisse noire"
@@ -329,12 +326,8 @@ export function SalesPage() {
                     )}
                   </td>
                   <td className="px-3 py-2 text-right font-medium">{formatPrice(r.client_cents)}</td>
-                  <td
-                    className={`px-3 py-2 text-right font-medium ${
-                      r.margin_cents < 0 ? 'text-red-600' : ''
-                    }`}
-                  >
-                    {formatPrice(r.margin_cents)}
+                  <td className="px-3 py-2 text-right font-medium">
+                    {formatPrice(r.foyer_cents)}
                   </td>
                   <td className="px-3 py-2 text-right text-purple-700">
                     {formatPrice(r.commission_cents)}

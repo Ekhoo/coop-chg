@@ -7,9 +7,9 @@ export interface SalesReportInput {
   from: Date
   to: Date
   clientTotal: number
+  foyerTotal: number
   commissionTotal: number
   costTotal: number
-  foyerMargin: number
   txCount: number
   byProduct: {
     product_name: string
@@ -20,7 +20,6 @@ export interface SalesReportInput {
     foyer_cents: number
     commission_cents: number
     cost_cents: number
-    margin_cents: number
   }[]
   bySeller: { seller_name: string; qty: number; client_cents: number }[]
   transactions: {
@@ -67,7 +66,7 @@ export function generateSalesPdf(input: SalesReportInput) {
     styles: { fontSize: 11, cellPadding: 1.5 },
     body: [
       ['Total payé par les clients', formatPrice(input.clientTotal)],
-      ['    · Foyer (vente - achat)', formatPrice(input.foyerMargin)],
+      ['    · Foyer', formatPrice(input.foyerTotal)],
       ['    · Caisse noire (pompiers)', formatPrice(input.commissionTotal)],
       ["Coût d'achat des articles vendus", formatPrice(input.costTotal)],
       ['Nombre de transactions', String(input.txCount)],
@@ -105,7 +104,7 @@ export function generateSalesPdf(input: SalesReportInput) {
         ? `${r.qty} portions (${formatGrams(r.portion_grams * r.qty)})`
         : String(r.qty),
       formatPrice(r.client_cents),
-      formatPrice(r.margin_cents),
+      formatPrice(r.foyer_cents),
       formatPrice(r.commission_cents),
       formatPrice(r.cost_cents),
     ]),
