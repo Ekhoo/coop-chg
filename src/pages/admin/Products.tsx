@@ -196,18 +196,8 @@ function ProductRow({
             >
               <Minus className="h-3 w-3" />
             </button>
-            <span className="min-w-[5rem] text-center font-semibold tabular-nums leading-tight">
-              {weight ? (
-                <>
-                  {sellableUnits} portions
-                  <br />
-                  <span className="text-[10px] font-normal text-slate-400">
-                    ({formatGrams(product.stock)})
-                  </span>
-                </>
-              ) : (
-                sellableUnits
-              )}
+            <span className="w-10 text-center font-semibold tabular-nums">
+              {sellableUnits}
             </span>
             <button
               onClick={() => adjustStock.mutate(+1)}
