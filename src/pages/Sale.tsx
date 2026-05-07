@@ -7,7 +7,13 @@ import { useToast } from '@/components/Toast'
 import { StockBadge } from '@/components/Badge'
 import { formatPrice } from '@/lib/format'
 import { publicImageUrl } from '@/lib/supabase'
-import { clientPriceCents, type Product } from '@/lib/database.types'
+import {
+  availableUnits,
+  clientPriceCents,
+  formatGrams,
+  isWeightBased,
+  type Product,
+} from '@/lib/database.types'
 
 export function Sale() {
   const { data: products = [], isLoading } = useProducts()
@@ -150,7 +156,9 @@ function CategoryTab({
 }
 
 function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }) {
-  const out = product.stock <= 0
+  const sellableUnits = availableUnits(product)
+  const out = sellableUnits <= 0
+  const weight = isWeightBased(product)
   const imageUrl = publicImageUrl(product.image_path)
 
   return (
@@ -170,18 +178,35 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }
           <ImageIcon className="h-10 w-10 text-slate-300" />
         )}
         <div className="absolute top-1.5 right-1.5">
-          <StockBadge stock={product.stock} />
+          <StockBadge stock={sellableUnits} />
         </div>
       </div>
       <div className="p-2.5 flex-1 flex flex-col">
         <div className="font-medium text-sm leading-tight line-clamp-2 text-slate-900">
           {product.name}
         </div>
+        {weight && product.portion_grams != null && (
+          <div className="text-[11px] text-slate-500 leading-tight mt-0.5">
+            {formatGrams(product.portion_grams)} par portion
+          </div>
+        )}
         <div className="mt-auto pt-1.5 flex items-end justify-between">
           <span className="font-bold text-brand-700 text-base">
             {formatPrice(clientPriceCents(product))}
           </span>
-          {!out && <span className="text-[11px] text-slate-400">Stock {product.stock}</span>}
+          {!out && (
+            <span className="text-[11px] text-slate-400 text-right leading-tight">
+              {weight && product.portion_grams != null ? (
+                <>
+                  {sellableUnits} portions
+                  <br />
+                  <span className="text-[10px]">({formatGrams(product.stock)})</span>
+                </>
+              ) : (
+                <>Stock {sellableUnits}</>
+              )}
+            </span>
+          )}
         </div>
       </div>
     </button>
@@ -227,12 +252,25 @@ function CartPanel({
             {cart.lines.map((line) => (
               <li key={line.product_id} className="p-3 flex gap-2">
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm truncate">{line.name}</div>
+                  <div className="font-medium text-sm truncate">
+                    {line.name}
+                    {line.portion_grams != null && (
+                      <span className="text-xs text-slate-400 font-normal ml-1">
+                        · {formatGrams(line.portion_grams)}
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs text-slate-500">
                     {formatPrice(lineUnitCents(line))} × {line.qty} ={' '}
                     <span className="font-semibold text-slate-700">
                       {formatPrice(lineUnitCents(line) * line.qty)}
                     </span>
+                    {line.portion_grams != null && (
+                      <span className="text-slate-400">
+                        {' '}
+                        ({formatGrams(line.portion_grams * line.qty)})
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-1">

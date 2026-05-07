@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { formatPrice, formatDateTime } from './format'
+import { formatGrams } from './database.types'
 
 export interface SalesReportInput {
   from: Date
@@ -13,6 +14,8 @@ export interface SalesReportInput {
   txCount: number
   byProduct: {
     product_name: string
+    /** Si non null, l'article est vendu au poids ; qty = nombre de portions. */
+    portion_grams: number | null
     qty: number
     client_cents: number
     caserne_cents: number
@@ -101,7 +104,9 @@ export function generateSalesPdf(input: SalesReportInput) {
     ],
     body: input.byProduct.map((r) => [
       r.product_name,
-      String(r.qty),
+      r.portion_grams != null
+        ? `${r.qty} portions (${formatGrams(r.portion_grams * r.qty)})`
+        : String(r.qty),
       formatPrice(r.client_cents),
       formatPrice(r.caserne_cents),
       formatPrice(r.commission_cents),
@@ -112,12 +117,12 @@ export function generateSalesPdf(input: SalesReportInput) {
     styles: { fontSize: 10, cellPadding: 2 },
     columnStyles: {
       0: { cellWidth: 'auto' },
-      1: { halign: 'right', cellWidth: 18 },
-      2: { halign: 'right', cellWidth: 28 },
-      3: { halign: 'right', cellWidth: 28 },
-      4: { halign: 'right', cellWidth: 28 },
-      5: { halign: 'right', cellWidth: 28 },
-      6: { halign: 'right', cellWidth: 28 },
+      1: { halign: 'right', cellWidth: 32 },
+      2: { halign: 'right', cellWidth: 26 },
+      3: { halign: 'right', cellWidth: 26 },
+      4: { halign: 'right', cellWidth: 26 },
+      5: { halign: 'right', cellWidth: 26 },
+      6: { halign: 'right', cellWidth: 26 },
     },
   })
 

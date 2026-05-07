@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Product } from '@/lib/database.types'
+import { availableUnits, type Product } from '@/lib/database.types'
 
 export interface CartLine {
   product_id: string
@@ -8,7 +8,13 @@ export interface CartLine {
   unit_sale_cents: number
   unit_commission_cents: number
   qty: number
+  /**
+   * Nombre maximum d'unités vendables (= portions disponibles pour les
+   * articles au poids, = stock pour les articles à l'unité).
+   */
   stock: number
+  /** Si défini, l'article est vendu au poids ; chaque qty = 1 portion. */
+  portion_grams: number | null
 }
 
 interface CartStore {
@@ -25,16 +31,19 @@ export const useCart = create<CartStore>()(
       lines: [],
       add: (product) =>
         set((state) => {
+          // Stock interprété en "unités vendables" : pour weight-based,
+          // c'est le nombre de portions qu'il reste.
+          const sellableUnits = availableUnits(product)
           const existing = state.lines.find((l) => l.product_id === product.id)
           if (existing) {
-            if (existing.qty + 1 > product.stock) return state
+            if (existing.qty + 1 > sellableUnits) return state
             return {
               lines: state.lines.map((l) =>
                 l.product_id === product.id ? { ...l, qty: l.qty + 1 } : l
               ),
             }
           }
-          if (product.stock <= 0) return state
+          if (sellableUnits <= 0) return state
           return {
             lines: [
               ...state.lines,
@@ -44,7 +53,8 @@ export const useCart = create<CartStore>()(
                 unit_sale_cents: product.sale_price_cents,
                 unit_commission_cents: product.commission_cents,
                 qty: 1,
-                stock: product.stock,
+                stock: sellableUnits,
+                portion_grams: product.portion_grams,
               },
             ],
           }
@@ -63,7 +73,7 @@ export const useCart = create<CartStore>()(
         set((state) => ({ lines: state.lines.filter((l) => l.product_id !== product_id) })),
       clear: () => set({ lines: [] }),
     }),
-    { name: 'coop-nico-cart', version: 2 }
+    { name: 'coop-nico-cart', version: 3 }
   )
 )
 

@@ -9,7 +9,13 @@ import { useToast } from '@/components/Toast'
 import { Modal } from '@/components/Modal'
 import { ArchivedBadge, StockBadge } from '@/components/Badge'
 import { formatPrice, parsePriceToCents } from '@/lib/format'
-import { clientPriceCents, type Product } from '@/lib/database.types'
+import {
+  availableUnits,
+  clientPriceCents,
+  formatGrams,
+  isWeightBased,
+  type Product,
+} from '@/lib/database.types'
 import { CategoriesSection } from './Categories'
 
 export function ProductsPage() {
@@ -127,9 +133,12 @@ function ProductRow({
   const toast = useToast()
   const imageUrl = publicImageUrl(product.image_path)
 
+  // Pour les articles au poids, +/- ajuste d'une portion (= portion_grams g).
+  // Pour les articles à l'unité, +/- 1.
+  const stockStep = product.portion_grams ?? 1
   const adjustStock = useMutation({
     mutationFn: async (delta: number) => {
-      const next = Math.max(0, product.stock + delta)
+      const next = Math.max(0, product.stock + delta * stockStep)
       const { error } = await supabase
         .from('products')
         .update({ stock: next })
@@ -139,6 +148,9 @@ function ProductRow({
     onSuccess: () => qc.invalidateQueries({ queryKey: ['products'] }),
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Erreur'),
   })
+
+  const sellableUnits = availableUnits(product)
+  const weight = isWeightBased(product)
 
   return (
     <tr className={product.archived ? 'opacity-50' : ''}>
@@ -154,6 +166,11 @@ function ProductRow({
       <td className="px-3 py-2">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-medium">{product.name}</span>
+          {weight && product.portion_grams != null && (
+            <span className="inline-flex items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-600/20">
+              {formatGrams(product.portion_grams)}/portion
+            </span>
+          )}
           {product.archived && <ArchivedBadge />}
         </div>
       </td>
@@ -175,19 +192,33 @@ function ProductRow({
               onClick={() => adjustStock.mutate(-1)}
               disabled={product.stock <= 0 || adjustStock.isPending}
               className="rounded-md border border-slate-300 p-1 hover:bg-slate-50 disabled:opacity-30"
+              title={weight ? `−1 portion (${stockStep} g)` : '−1'}
             >
               <Minus className="h-3 w-3" />
             </button>
-            <span className="w-10 text-center font-semibold tabular-nums">{product.stock}</span>
+            <span className="min-w-[5rem] text-center font-semibold tabular-nums leading-tight">
+              {weight ? (
+                <>
+                  {sellableUnits} portions
+                  <br />
+                  <span className="text-[10px] font-normal text-slate-400">
+                    ({formatGrams(product.stock)})
+                  </span>
+                </>
+              ) : (
+                sellableUnits
+              )}
+            </span>
             <button
               onClick={() => adjustStock.mutate(+1)}
               disabled={adjustStock.isPending}
               className="rounded-md border border-slate-300 p-1 hover:bg-slate-50"
+              title={weight ? `+1 portion (${stockStep} g)` : '+1'}
             >
               <Plus className="h-3 w-3" />
             </button>
           </div>
-          <StockBadge stock={product.stock} />
+          <StockBadge stock={sellableUnits} />
         </div>
       </td>
       <td className="px-3 py-2 text-right">
@@ -227,6 +258,16 @@ function ProductFormModal({
   const [archived, setArchived] = useState(product?.archived ?? false)
   const [uploading, setUploading] = useState(false)
 
+  // Mode "vente au poids" : peut être modifié à tout moment.
+  // Si l'admin change le mode en édition, on l'avertit que le stock change de sens.
+  const isEditing = !!product
+  const initialWeightBased = product?.portion_grams != null && product.portion_grams > 0
+  const [weightBased, setWeightBased] = useState(initialWeightBased)
+  const [portionGramsText, setPortionGramsText] = useState(
+    product?.portion_grams ? String(product.portion_grams) : ''
+  )
+  const modeChanged = isEditing && weightBased !== initialWeightBased
+
   const saleCentsPreview = parsePriceToCents(saleText) ?? 0
   const commissionCentsPreview = parsePriceToCents(commissionText) ?? 0
   const costCentsPreview = parsePriceToCents(costText) ?? 0
@@ -260,6 +301,17 @@ function ProductFormModal({
       if (commission === null) throw new Error('Commission invalide')
       const stockNum = Number(stock)
       if (!Number.isInteger(stockNum) || stockNum < 0) throw new Error('Stock invalide')
+
+      // portion_grams : peut être modifié à tout moment.
+      let portionGrams: number | null = null
+      if (weightBased) {
+        const pg = Number(portionGramsText)
+        if (!Number.isInteger(pg) || pg <= 0) {
+          throw new Error('Poids par portion invalide (doit être un entier > 0)')
+        }
+        portionGrams = pg
+      }
+
       const payload = {
         name: name.trim(),
         category_id: categoryId || null,
@@ -269,6 +321,7 @@ function ProductFormModal({
         stock: stockNum,
         image_path: imagePath,
         archived,
+        portion_grams: portionGrams,
       }
       if (product) {
         const { error } = await supabase.from('products').update(payload).eq('id', product.id)
@@ -426,16 +479,69 @@ function ProductFormModal({
           </div>
         </div>
 
-        <div>
-          <label className="label">Stock</label>
-          <input
-            className="input"
-            type="number"
-            min={0}
-            value={stock}
-            onChange={(e) => setStock(e.target.value)}
-            required
-          />
+        <div className="rounded-lg border border-slate-200 p-3 space-y-3">
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={weightBased}
+              onChange={(e) => setWeightBased(e.target.checked)}
+            />
+            <span className="text-sm">
+              <span className="font-medium text-slate-900">Vente au poids</span>
+              <span className="block text-[11px] text-slate-500">
+                Cocher si l'article se vend par portions de poids fixe (ex. 100 g de bonbons).
+              </span>
+            </span>
+          </label>
+
+          {weightBased && (
+            <div>
+              <label className="label">Poids par portion (g)</label>
+              <input
+                className="input"
+                type="number"
+                min={1}
+                step={1}
+                value={portionGramsText}
+                onChange={(e) => setPortionGramsText(e.target.value)}
+                placeholder="100"
+                required
+              />
+            </div>
+          )}
+
+          <div>
+            <label className="label">
+              {weightBased ? 'Stock total (g)' : 'Stock (unités)'}
+            </label>
+            <input
+              className="input"
+              type="number"
+              min={0}
+              value={stock}
+              onChange={(e) => setStock(e.target.value)}
+              required
+            />
+            {weightBased && portionGramsText && Number(portionGramsText) > 0 && (
+              <p className="text-[11px] text-slate-500 mt-1">
+                ≈ {Math.floor((Number(stock) || 0) / Number(portionGramsText))} portions de{' '}
+                {portionGramsText} g
+              </p>
+            )}
+          </div>
+
+          {modeChanged && (
+            <div className="rounded-md bg-amber-50 border border-amber-200 p-2.5 text-[11px] text-amber-800 flex gap-2">
+              <span className="text-amber-600 shrink-0">⚠️</span>
+              <span>
+                Tu changes le mode de vente. La valeur du stock va être interprétée différemment
+                ({weightBased ? 'en grammes' : 'en pièces'} après enregistrement). Pense à
+                ajuster le champ Stock ci-dessus avant d'enregistrer si la valeur n'est plus la
+                bonne.
+              </span>
+            </div>
+          )}
         </div>
 
         {product && (

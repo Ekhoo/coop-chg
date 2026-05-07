@@ -32,7 +32,7 @@ import { Modal } from '@/components/Modal'
 import { useToast } from '@/components/Toast'
 import { useDbStats, usePurgeTransactions } from '@/hooks/useDbStats'
 import { useProducts } from '@/hooks/useProducts'
-import type { Profile, Transaction, TransactionItem } from '@/lib/database.types'
+import { formatGrams, type Profile, type Transaction, type TransactionItem } from '@/lib/database.types'
 
 interface TxWithDetails extends Transaction {
   items: TransactionItem[]
@@ -42,6 +42,11 @@ interface TxWithDetails extends Transaction {
 interface ProductBreakdown {
   product_id: string | null
   product_name: string
+  /**
+   * Si non null : article vendu au poids, qty est un nombre de portions,
+   * portion_grams donne le poids unitaire. Sinon : qty = pièces.
+   */
+  portion_grams: number | null
   qty: number
   client_cents: number
   caserne_cents: number
@@ -141,6 +146,7 @@ export function SalesPage() {
           ({
             product_id: it.product_id,
             product_name: it.product_name,
+            portion_grams: it.unit_portion_grams,
             qty: 0,
             client_cents: 0,
             caserne_cents: 0,
@@ -151,6 +157,10 @@ export function SalesPage() {
         // garde le 1er product_id non null vu (utile si certaines lignes ont un id null)
         if (entry.product_id === null && it.product_id !== null) {
           entry.product_id = it.product_id
+        }
+        // garde le 1er portion_grams non null vu
+        if (entry.portion_grams === null && it.unit_portion_grams !== null) {
+          entry.portion_grams = it.unit_portion_grams
         }
         entry.qty += it.qty
         entry.client_cents += lineClient
@@ -316,7 +326,18 @@ export function SalesPage() {
               {stats.byProduct.map((r) => (
                 <tr key={r.product_name}>
                   <td className="px-3 py-2 font-medium">{r.product_name}</td>
-                  <td className="px-3 py-2 text-right">{r.qty}</td>
+                  <td className="px-3 py-2 text-right whitespace-nowrap">
+                    {r.portion_grams != null ? (
+                      <>
+                        {r.qty} portions
+                        <span className="block text-[10px] text-slate-400">
+                          ({formatGrams(r.portion_grams * r.qty)})
+                        </span>
+                      </>
+                    ) : (
+                      r.qty
+                    )}
+                  </td>
                   <td className="px-3 py-2 text-right font-medium">{formatPrice(r.client_cents)}</td>
                   <td className="px-3 py-2 text-right">{formatPrice(r.caserne_cents)}</td>
                   <td className="px-3 py-2 text-right text-purple-700">
