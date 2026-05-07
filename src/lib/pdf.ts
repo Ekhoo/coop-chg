@@ -52,7 +52,7 @@ export function generateSalesPdf(input: SalesReportInput) {
 
   doc.setFontSize(11)
   doc.setTextColor(60, 60, 60)
-  doc.text(`Période : ${fromStr} → ${toStr}`, 14, 33)
+  doc.text(`Période : du ${fromStr} au ${toStr}`, 14, 33)
 
   doc.setTextColor(0)
 
@@ -65,10 +65,10 @@ export function generateSalesPdf(input: SalesReportInput) {
     styles: { fontSize: 11, cellPadding: 1.5 },
     body: [
       ['Total payé par les clients', formatPrice(input.clientTotal)],
-      ['  → Part caserne', formatPrice(input.caserneTotal)],
-      ['  → Caisse noire (pompiers)', formatPrice(input.commissionTotal)],
+      ['    · Part caserne', formatPrice(input.caserneTotal)],
+      ['    · Caisse noire (pompiers)', formatPrice(input.commissionTotal)],
       ["Coût d'achat des articles vendus", formatPrice(input.costTotal)],
-      ['Marge caserne (vente − achat)', formatPrice(input.caserneMargin)],
+      ['Marge caserne (vente - achat)', formatPrice(input.caserneMargin)],
       ['Nombre de transactions', String(input.txCount)],
       ['Ticket moyen', formatPrice(Math.round(ticketAvg))],
     ],
