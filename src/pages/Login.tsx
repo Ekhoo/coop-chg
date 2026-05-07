@@ -1,11 +1,10 @@
 import { useState, type FormEvent } from 'react'
-import { Navigate, useLocation } from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
 import { Flame } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 
 export function Login() {
   const { session, signIn, loading } = useAuth()
-  const location = useLocation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -19,9 +18,9 @@ export function Login() {
     )
   }
 
+  // Après connexion, toujours atterrir sur le Catalogue (page d'accueil)
   if (session) {
-    const from = (location.state as { from?: string } | null)?.from ?? '/'
-    return <Navigate to={from} replace />
+    return <Navigate to="/" replace />
   }
 
   async function handleSubmit(e: FormEvent) {

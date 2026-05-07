@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   Download,
@@ -752,19 +752,36 @@ function DatePill({
   value: string
   onChange: (v: string) => void
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'>) {
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  function handleClick(e: React.MouseEvent) {
+    // Si on a cliqué directement sur l'input, laisse le navigateur gérer
+    if (e.target === inputRef.current) return
+    // Sinon, ouvre le date picker depuis n'importe où dans la pill
+    try {
+      inputRef.current?.showPicker?.()
+    } catch {
+      inputRef.current?.focus()
+    }
+  }
+
   return (
-    <div className="inline-flex items-center rounded-full border border-slate-200 bg-white shadow-sm transition-all hover:border-slate-300 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20">
-      <span className="pl-3 pr-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+    <label
+      onClick={handleClick}
+      className="inline-flex h-9 cursor-pointer items-center rounded-full border border-slate-200 bg-white shadow-sm transition-all hover:border-slate-300 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20"
+    >
+      <span className="select-none pl-3 pr-2 text-[11px] font-bold uppercase leading-none tracking-widest text-slate-500">
         {label}
       </span>
       <input
+        ref={inputRef}
         type="date"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="appearance-none border-0 bg-transparent pl-0 pr-3 py-1.5 text-sm font-medium text-slate-900 focus:outline-none focus:ring-0"
+        className="h-full appearance-none border-0 bg-transparent pl-0 pr-3 text-sm font-medium leading-none text-slate-900 focus:outline-none focus:ring-0"
         {...rest}
       />
-    </div>
+    </label>
   )
 }
 
