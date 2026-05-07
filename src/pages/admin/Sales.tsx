@@ -198,8 +198,6 @@ export function SalesPage() {
     })
   }
 
-  const ticketAvg = stats.txCount > 0 ? stats.clientTotal / stats.txCount : 0
-
   // Plage globale (1ère et dernière transaction de la base) pour le bouton "Toute la période"
   const { data: dbStats } = useDbStats()
   const globalRange = useMemo(() => {
@@ -301,7 +299,6 @@ export function SalesPage() {
         <Kpi
           label="Transactions"
           value={`${stats.txCount}`}
-          subtitle={`⌀ ${formatPrice(Math.round(ticketAvg))}`}
           icon={<Receipt className="h-5 w-5" />}
           color="amber"
         />
